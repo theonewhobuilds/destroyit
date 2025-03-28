@@ -514,8 +514,13 @@
       // FALLBACK: Direct URL to ensure application works even if middleware fails
       // This URL is public anyway, so hardcoding is not a security risk
       const FALLBACK_SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
-      // Force the URL to always use our hardcoded value as a last resort
+      // Also hardcode the anon key as fallback
+      const FALLBACK_SUPABASE_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb251cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDM5NjgsImV4cCI6MjAyMjkxOTk2OH0.7puLpOsSlPIWn6OhMd-wLxtlGhXFTZdmwWhNazjVvzk";
+
+      // Force the values to always use our hardcoded fallbacks
       window.SUPABASE_URL = FALLBACK_SUPABASE_URL;
+      window.SUPABASE_ANON_KEY = FALLBACK_SUPABASE_KEY;
     </script>
     <div class="container">
       <div id="home-screen" class="screen active">
