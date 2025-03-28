@@ -909,7 +909,7 @@
       async function saveScore(score, wpm) {
         try {
           const scoreData = {
-            user_id: currentUser?.id,
+            profile_id: currentUser?.id,
             username: currentGamingName, // Use gaming name for both guests and logged-in users
             score: score,
             wpm: wpm,
