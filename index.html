@@ -729,14 +729,13 @@
         if (currentUser) {
           try {
             // First check if the gaming name is already taken
-            const { data: existingUser, error: checkError } = await supabase
+            const { data, error: checkError } = await supabase
               .from("profiles")
               .select("id")
               .eq("gaming_name", gamingName)
-              .neq("id", currentUser.id)
-              .single();
+              .neq("id", currentUser.id);
 
-            if (checkError && checkError.code !== "PGRST116") {
+            if (checkError) {
               console.error("Error checking gaming name:", checkError);
               alert(
                 "Error checking gaming name availability. Please try again."
@@ -744,7 +743,7 @@
               return;
             }
 
-            if (existingUser) {
+            if (data && data.length > 0) {
               alert(
                 "This gaming name is already taken. Please choose another one."
               );
