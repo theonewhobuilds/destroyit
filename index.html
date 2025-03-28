@@ -117,6 +117,8 @@
         border: 1px solid #00ffff;
         border-radius: 3px;
         z-index: 1;
+        transform: translateZ(0); /* Enable hardware acceleration */
+        will-change: transform; /* Optimize animations */
       }
 
       .gaming-name-input {
@@ -786,10 +788,12 @@
         // Clear any existing intervals
         if (gameInterval) {
           clearInterval(gameInterval);
+          gameInterval = null;
         }
 
-        // Start game loop
-        gameInterval = setInterval(updateGame, 50);
+        // Start game loop using requestAnimationFrame
+        gameInterval = true;
+        requestAnimationFrame(updateGame);
         spawnObject(); // Start spawning words
       }
 
@@ -816,16 +820,20 @@
           element: wordElement,
           word: word,
           y: 0,
-          speed: 1 + Math.random() * 0.5, // Slightly reduced speed variation
+          speed: 2 + Math.random() * 1, // Increased base speed and variation
         });
 
         // Schedule next spawn with increasing frequency
         const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
         spawnCount++;
-        setTimeout(spawnObject, spawnDelay);
+        if (gameInterval) {
+          setTimeout(spawnObject, spawnDelay);
+        }
       }
 
       function updateGame() {
+        if (!gameInterval) return;
+
         const gameArea = document.querySelector(".game-area");
         const maxY = gameArea.offsetHeight - 100; // Account for input area and padding
 
@@ -833,7 +841,7 @@
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
           obj.y += obj.speed;
-          obj.element.style.top = obj.y + "px";
+          obj.element.style.top = `${obj.y}px`;
 
           // Remove if passed bottom
           if (obj.y > maxY) {
@@ -848,6 +856,11 @@
           const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60; // in minutes
           const wpm = Math.round(wordsTyped / timeElapsed);
           document.getElementById("wpm").textContent = wpm.toString();
+        }
+
+        // Request next frame
+        if (gameInterval) {
+          requestAnimationFrame(updateGame);
         }
       }
 
@@ -1317,7 +1330,7 @@
 
       // Game over
       async function gameOver() {
-        clearInterval(gameInterval);
+        gameInterval = null; // Stop the game loop
         const finalWpm = Math.round(
           wordsTyped / ((Date.now() - gameStartTime) / 60000)
         );
@@ -1326,7 +1339,7 @@
         document.getElementById("typing-speed").textContent = finalWpm;
 
         if (currentUser || isGuest) {
-          await saveScore(score, finalWpm);
+          saveScore(score, finalWpm);
         }
 
         showScreen("end-screen");
