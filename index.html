@@ -431,11 +431,12 @@
         right: 20px;
         display: flex;
         gap: 10px;
+        z-index: 100;
       }
 
       .life {
-        width: 20px;
-        height: 20px;
+        width: 25px;
+        height: 25px;
         background-color: #ff00ff;
         border-radius: 50%;
         box-shadow: 0 0 10px #ff00ff;
@@ -649,6 +650,7 @@
               <div>WPM: <span id="wpm">0</span></div>
               <div>Player: <span id="player-name">-</span></div>
             </div>
+            <div class="lives" id="lives"></div>
             <div id="words-container" class="words-container"></div>
             <div class="game-input-container">
               <input
@@ -699,10 +701,10 @@
       let isGuest = false;
       let gameInterval = null;
       let gameStartTime = null;
+      let lives = 3;
 
       // Game variables
       let score = 0;
-      let lives = 3;
       let wordsTyped = 0;
       let fallingObjects = [];
       let spawnCount = 0;
@@ -759,6 +761,7 @@
       function initGame() {
         // Reset game state
         score = 0;
+        lives = 3;
         wordsTyped = 0;
         fallingObjects = [];
         gameStartTime = Date.now();
@@ -767,6 +770,7 @@
         document.getElementById("words-container").innerHTML = "";
         document.getElementById("word-input").value = "";
         document.getElementById("word-input").focus();
+        updateLives();
 
         // Start game loop
         if (gameInterval) {
@@ -821,6 +825,7 @@
           if (obj.y > maxY) {
             obj.element.remove();
             fallingObjects.splice(index, 1);
+            loseLife(); // Lose a life when word reaches bottom
           }
         });
 
@@ -947,14 +952,15 @@
 
           if (user) {
             currentUser = user;
-            document.getElementById("login-btn").style.display = "none";
-            document.getElementById("profile-btn").style.display = "block";
-            document.getElementById("logout-btn").style.display = "block";
+            updateAuthUI(true);
             await loadProfileStats();
             await checkGamingName();
+          } else {
+            updateAuthUI(false);
           }
         } catch (error) {
           console.error("Error checking auth:", error);
+          updateAuthUI(false);
         }
       }
 
@@ -1107,20 +1113,59 @@
         }
       }
 
-      // Check initial auth state
+      // Update auth UI to hide guest option when logged in
+      function updateAuthUI(isLoggedIn) {
+        document.getElementById("login-btn").style.display = isLoggedIn
+          ? "none"
+          : "block";
+        document.getElementById("profile-btn").style.display = isLoggedIn
+          ? "block"
+          : "none";
+        document.getElementById("logout-btn").style.display = isLoggedIn
+          ? "block"
+          : "none";
+        // Hide guest option when logged in
+        const guestButton = document.querySelector(
+          'button[onclick="playAsGuest()"]'
+        );
+        if (guestButton) {
+          guestButton.style.display = isLoggedIn ? "none" : "block";
+        }
+      }
+
+      // Update checkAuth to use updateAuthUI
+      async function checkAuth() {
+        try {
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (error) throw error;
+
+          if (user) {
+            currentUser = user;
+            updateAuthUI(true);
+            await loadProfileStats();
+            await checkGamingName();
+          } else {
+            updateAuthUI(false);
+          }
+        } catch (error) {
+          console.error("Error checking auth:", error);
+          updateAuthUI(false);
+        }
+      }
+
+      // Update auth state change handler
       supabase.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_IN") {
           currentUser = session.user;
-          document.getElementById("login-btn").style.display = "none";
-          document.getElementById("profile-btn").style.display = "block";
-          document.getElementById("logout-btn").style.display = "block";
+          updateAuthUI(true);
           checkGamingName();
         } else if (event === "SIGNED_OUT") {
           currentUser = null;
           currentGamingName = null;
-          document.getElementById("login-btn").style.display = "block";
-          document.getElementById("profile-btn").style.display = "none";
-          document.getElementById("logout-btn").style.display = "none";
+          updateAuthUI(false);
           showScreen("home-screen");
         }
       });
@@ -1321,6 +1366,11 @@
           }
         }
       });
+
+      function updateLives() {
+        const livesContainer = document.getElementById("lives");
+        livesContainer.innerHTML = "❤️".repeat(lives);
+      }
     </script>
   </body>
 </html>
