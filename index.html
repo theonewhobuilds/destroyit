@@ -788,90 +788,97 @@
       }
 
       function updateGame() {
+        // Get game area
         const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight - 100; // Account for input area and padding
+        const maxY = gameArea.offsetHeight - 100;
 
-        // Update positions of all falling words
+        // Log the number of words for debugging
+        console.log(`Updating ${fallingObjects.length} falling words`);
+
+        // Loop through words in reverse order so we can safely remove while iterating
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
 
-          // Increase y position based on speed
+          // Update position
           obj.y += obj.speed;
 
-          // Apply the new position with forced px units
-          obj.element.style.top = `${Math.round(obj.y)}px`;
+          // Apply position - directly manipulate the style
+          if (obj.element && obj.element.style) {
+            obj.element.style.top = obj.y + "px";
 
-          // Log movement for debugging (first word only)
-          if (i === 0 && fallingObjects.length > 0) {
-            console.log(
-              `Word: ${obj.word}, Y: ${obj.y}, Speed: ${obj.speed}, Style.top: ${obj.element.style.top}`
-            );
-          }
+            // Debug first word
+            if (i === 0) {
+              console.log(
+                `Word ${obj.word}: Y=${obj.y}, Speed=${obj.speed}, StyleTop=${obj.element.style.top}`
+              );
+            }
 
-          // Remove if passed bottom
-          if (obj.y > maxY) {
-            console.log(`Word hit bottom: ${obj.word}`);
-            obj.element.remove();
+            // Check if word hit bottom
+            if (obj.y > maxY) {
+              obj.element.remove();
+              fallingObjects.splice(i, 1);
+              loseLife();
+            }
+          } else {
+            // Element no longer exists
+            console.log("Word element is missing!");
             fallingObjects.splice(i, 1);
-            loseLife();
           }
         }
 
         // Update WPM
         if (wordsTyped > 0) {
-          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60; // in minutes
+          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60;
           const wpm = Math.round(wordsTyped / timeElapsed);
           document.getElementById("wpm").textContent = wpm.toString();
         }
 
-        // Continue the game loop
+        // Continue game loop
         if (lives > 0) {
           gameInterval = requestAnimationFrame(updateGame);
         }
       }
 
       function spawnObject() {
-        console.log("Spawning new word");
         // Don't spawn if game is over
         if (lives <= 0) return;
 
+        // Choose random word
         const word = words[Math.floor(Math.random() * words.length)];
+
+        // Create element
         const wordElement = document.createElement("div");
         wordElement.className = "falling-word";
         wordElement.textContent = word;
 
-        // Calculate random position that ensures word is fully visible
+        // Set position
         const gameArea = document.querySelector(".game-area");
-        const wordWidth = word.length * 15; // Approximate width based on font size
-        const maxX = gameArea.offsetWidth - wordWidth - 20; // Add padding
+        const wordWidth = word.length * 15;
+        const maxX = gameArea.offsetWidth - wordWidth - 20;
         const x = Math.random() * maxX;
 
-        // Force absolute positioning and set initial coordinates
-        wordElement.style.position = "absolute";
-        wordElement.style.left = `${x}px`;
-        wordElement.style.top = "0px";
+        // Set position styles directly
+        Object.assign(wordElement.style, {
+          position: "absolute",
+          left: x + "px",
+          top: "0px",
+          zIndex: "10",
+        });
 
-        // First add to DOM
+        // Add to container
         document.getElementById("words-container").appendChild(wordElement);
 
-        // Log creation
-        console.log(`Created word: ${word} at position x:${x}, y:0`);
-
-        // Create falling object with higher speed
-        const newObj = {
+        // Add to falling objects array
+        fallingObjects.push({
           element: wordElement,
           word: word,
           y: 0,
-          speed: 3 + Math.random() * 2, // Increased speed for better visibility
-        };
+          speed: 2 + Math.random() * 1,
+        });
 
-        fallingObjects.push(newObj);
+        console.log(`Spawned word: ${word} at x=${x}, y=0`);
 
-        // Force an initial position update
-        newObj.y += newObj.speed;
-        newObj.element.style.top = `${newObj.y}px`;
-
-        // Schedule next spawn with increasing frequency
+        // Schedule next spawn
         const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
         spawnCount++;
 
