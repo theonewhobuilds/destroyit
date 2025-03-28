@@ -869,7 +869,10 @@
 
       // Add missing checkAndSpawnObjects function
       function checkAndSpawnObjects() {
-        if (fallingObjects.length < spawnCount) {
+        // Calculate max objects based on score
+        const maxObjects = Math.min(10, Math.floor(score / 50) + 1);
+
+        if (fallingObjects.length < maxObjects) {
           spawnObject();
         }
       }
@@ -1068,8 +1071,7 @@
           clearInterval(gameInterval);
         }
 
-        // Spawn initial objects
-        spawnObject();
+        // Spawn initial object (only one at the beginning)
         spawnObject();
 
         gameInterval = setInterval(() => {
@@ -1150,11 +1152,17 @@
 
         gameArea.appendChild(element);
 
+        // Calculate speed based on score
+        const scoreBracket = Math.floor(score / 50);
+        const minSpeed = 5 + scoreBracket * 5;
+        const maxSpeed = 10 + scoreBracket * 5;
+        const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
+
         fallingObjects.push({
           word: word,
           element: element,
           y: 0,
-          speed: 2 + Math.random() * 2,
+          speed: speed,
         });
       }
 
