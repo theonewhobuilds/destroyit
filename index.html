@@ -260,6 +260,15 @@
         text-shadow: 0 0 10px #ff00ff;
       }
 
+      .leaderboard-header div {
+        display: flex;
+        justify-content: center;
+      }
+
+      .leaderboard-header div:nth-child(2) {
+        justify-content: flex-start;
+      }
+
       .leaderboard-item {
         display: grid;
         grid-template-columns: 100px 2fr 1fr 1fr;
@@ -614,9 +623,6 @@
         <div class="leaderboard" id="leaderboard">
           <!-- Leaderboard content will be dynamically inserted here -->
         </div>
-        <button class="back-btn" onclick="showScreen('home-screen')">
-          Back to Home
-        </button>
       </div>
     </div>
 
@@ -727,6 +733,9 @@
             document.getElementById("login-btn").style.display = "none";
             document.getElementById("profile-btn").style.display = "block";
             document.getElementById("logout-btn").style.display = "block";
+            document.querySelector(
+              'button[onclick="playAsGuest()"]'
+            ).style.display = "none";
             await loadProfileStats();
             await checkGamingName();
           }
@@ -904,6 +913,9 @@
           document.getElementById("login-btn").style.display = "none";
           document.getElementById("profile-btn").style.display = "block";
           document.getElementById("logout-btn").style.display = "block";
+          document.querySelector(
+            'button[onclick="playAsGuest()"]'
+          ).style.display = "none";
           checkGamingName();
         } else if (event === "SIGNED_OUT") {
           currentUser = null;
@@ -911,6 +923,9 @@
           document.getElementById("login-btn").style.display = "block";
           document.getElementById("profile-btn").style.display = "none";
           document.getElementById("logout-btn").style.display = "none";
+          document.querySelector(
+            'button[onclick="playAsGuest()"]'
+          ).style.display = "block";
           showScreen("home-screen");
         }
       });
@@ -1233,6 +1248,15 @@
 
       // Initialize game
       checkAuth();
+
+      // Also check auth on page load to handle the Play as Guest button visibility
+      window.addEventListener("DOMContentLoaded", () => {
+        if (currentUser) {
+          document.querySelector(
+            'button[onclick="playAsGuest()"]'
+          ).style.display = "none";
+        }
+      });
 
       // Add close gaming name modal function
       function closeGamingNameModal() {
