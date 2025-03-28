@@ -555,6 +555,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
     <!-- Add environment configuration -->
     <script src="/env-config.js"></script>
+
     <div class="container">
       <div id="home-screen" class="screen active">
         <h1 class="title">Cyberpunk Typing</h1>
@@ -639,6 +640,7 @@
         </div>
       </div>
 
+      <!-- Game Screen -->
       <div id="game-screen" class="screen">
         <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
         <div class="game-container">
@@ -651,7 +653,10 @@
               placeholder="Enter your gaming name"
               maxlength="20"
             />
-            <button class="start-button" onclick="startGameWithName()">
+            <button
+              class="start-button"
+              onclick="gameModule.startGameWithName()"
+            >
               Start Game
             </button>
           </div>
@@ -681,7 +686,9 @@
         <h2 class="title">Game Over</h2>
         <p>Final Score: <span id="final-score">0</span></p>
         <p>Typing Speed: <span id="typing-speed">0</span> WPM</p>
-        <button class="btn" onclick="restartGame()">Play Again</button>
+        <button class="btn" onclick="gameModule.restartGame()">
+          Play Again
+        </button>
         <button class="btn" onclick="showScreen('leaderboard-screen')">
           Leaderboard
         </button>
@@ -706,271 +713,21 @@
         window.SUPABASE_ANON_KEY
       );
 
+      // Make supabase globally available for game.js
+      window.supabase = supabase;
+
       // Initialize state variables
       let currentUser = null;
       let currentGamingName = null;
       let isGuest = false;
-      let gameInterval = null;
-      let gameStartTime = null;
-      let lives = 3;
 
-      // Game variables
-      let score = 0;
-      let wordsTyped = 0;
-      let fallingObjects = [];
-      let spawnCount = 0;
-      const words = [
-        "code",
-        "debug",
-        "hack",
-        "cyber",
-        "data",
-        "system",
-        "network",
-        "binary",
-        "encrypt",
-        "decrypt",
-        "virus",
-        "trojan",
-        "malware",
-        "firewall",
-        "protocol",
-        "server",
-        "client",
-        "matrix",
-        "neural",
-        "quantum",
-        "algorithm",
-      ];
+      // Make user variables globally available for game.js
+      window.currentUser = currentUser;
+      window.currentGamingName = currentGamingName;
+      window.isGuest = isGuest;
 
       // Add console debugging
-      console.log("Game script loaded");
-
-      function initGame() {
-        console.log("Game initialized");
-        // Reset game state
-        score = 0;
-        lives = 3;
-        wordsTyped = 0;
-        fallingObjects = [];
-        spawnCount = 0;
-        gameStartTime = Date.now();
-
-        // Clear UI
-        document.getElementById("score").textContent = "0";
-        document.getElementById("wpm").textContent = "0";
-
-        // Reset and prepare words container
-        const wordsContainer = document.getElementById("words-container");
-        wordsContainer.innerHTML = "";
-
-        // Ensure the words container has the right positioning context
-        wordsContainer.style.position = "relative";
-        wordsContainer.style.width = "100%";
-        wordsContainer.style.height = "calc(100% - 80px)";
-        wordsContainer.style.overflow = "hidden";
-
-        document.getElementById("word-input").value = "";
-        updateLives();
-
-        // Clear any existing game state
-        clearGameInterval();
-
-        // Start game loop using requestAnimationFrame
-        startGameLoop();
-        // Schedule first word spawn
-        setTimeout(spawnObject, 1000);
-      }
-
-      function spawnObject() {
-        // Don't spawn if game is over
-        if (lives <= 0) return;
-
-        // Choose random word
-        const word = words[Math.floor(Math.random() * words.length)];
-
-        // Create element
-        const wordElement = document.createElement("div");
-        wordElement.className = "falling-word";
-        wordElement.textContent = word;
-
-        // Set position
-        const gameArea = document.querySelector(".game-area");
-        const wordWidth = word.length * 15;
-        const maxX = gameArea.offsetWidth - wordWidth - 20;
-        const x = Math.random() * maxX;
-
-        // Create the falling object with all needed properties
-        const fallingObj = {
-          element: wordElement,
-          word: word,
-          x: Math.round(x),
-          y: 0,
-          speed: 3 + Math.random() * 2,
-        };
-
-        // Position MUST be set to absolute for correct positioning
-        wordElement.style.position = "absolute";
-        wordElement.style.left = fallingObj.x + "px";
-        wordElement.style.top = "0px";
-
-        // Add to container
-        document.getElementById("words-container").appendChild(wordElement);
-
-        // Add to falling objects array
-        fallingObjects.push(fallingObj);
-
-        console.log(
-          `Spawned word: ${word} at x=${x}, y=0, speed=${fallingObj.speed}`
-        );
-
-        // Schedule next spawn
-        const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
-        spawnCount++;
-
-        // Only schedule next spawn if game is still active
-        if (lives > 0) {
-          setTimeout(spawnObject, spawnDelay);
-        }
-      }
-
-      // Completely rewrite animation logic with a simpler approach
-      function startGameLoop() {
-        console.log("Starting game loop");
-        // Start a simple animation loop
-        function gameLoop() {
-          if (lives <= 0) return;
-
-          updateGame();
-          gameInterval = setTimeout(gameLoop, 16); // ~60fps
-        }
-
-        // Start the game loop using setTimeout instead of requestAnimationFrame
-        gameInterval = setTimeout(gameLoop, 16);
-      }
-
-      function updateGame() {
-        // Get game area dimensions
-        const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight - 100;
-
-        // Loop through words in reverse order so we can safely remove while iterating
-        for (let i = fallingObjects.length - 1; i >= 0; i--) {
-          const obj = fallingObjects[i];
-
-          // Update position with speed value
-          obj.y += obj.speed;
-
-          // Apply position using DOM manipulation
-          if (obj.element) {
-            obj.element.style.top = Math.round(obj.y) + "px";
-
-            // Debug log position for first word
-            if (i === 0) {
-              console.log(
-                `Word ${obj.word} at y=${obj.y}, DOM top=${obj.element.style.top}`
-              );
-            }
-
-            // Check if word hit bottom
-            if (obj.y > maxY) {
-              if (obj.element.parentNode) {
-                obj.element.parentNode.removeChild(obj.element);
-              }
-              fallingObjects.splice(i, 1);
-              loseLife();
-            }
-          } else {
-            // Element no longer exists
-            fallingObjects.splice(i, 1);
-          }
-        }
-
-        // Update WPM
-        if (wordsTyped > 0) {
-          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60;
-          const wpm = Math.round(wordsTyped / timeElapsed);
-          document.getElementById("wpm").textContent = wpm.toString();
-        }
-      }
-
-      // Update word removal logic to be more reliable
-      document.getElementById("word-input").addEventListener("input", (e) => {
-        const input = e.target.value.trim().toLowerCase();
-
-        if (!input) return;
-
-        for (let i = fallingObjects.length - 1; i >= 0; i--) {
-          const obj = fallingObjects[i];
-          if (input === obj.word.toLowerCase()) {
-            // Remove word and update score
-            if (obj.element && obj.element.parentNode) {
-              obj.element.parentNode.removeChild(obj.element);
-            }
-            fallingObjects.splice(i, 1);
-            score += obj.word.length;
-            wordsTyped++;
-            document.getElementById("score").textContent = score.toString();
-            e.target.value = "";
-            break; // Only remove one word at a time
-          }
-        }
-      });
-
-      // Update game clean up
-      function clearGameInterval() {
-        if (gameInterval) {
-          clearTimeout(gameInterval);
-          gameInterval = null;
-        }
-      }
-
-      function gameOver() {
-        // Cancel animation frame
-        clearGameInterval();
-
-        const finalWpm = Math.round(
-          wordsTyped / ((Date.now() - gameStartTime) / 60000)
-        );
-
-        document.getElementById("final-score").textContent = score;
-        document.getElementById("typing-speed").textContent = finalWpm;
-
-        if (currentUser) {
-          saveScore(score, finalWpm);
-        }
-
-        showScreen("end-screen");
-      }
-
-      // Reset game setup when showing game screen
-      function showGameScreen() {
-        if (
-          currentGamingName ||
-          (isGuest && localStorage.getItem("guestGamingName"))
-        ) {
-          // If we already have a gaming name, start the game directly
-          document.getElementById("game-setup").style.display = "none";
-          document.querySelector(".game-area").style.display = "block";
-          document.getElementById("word-input").style.display = "block";
-          document.getElementById("player-name").textContent =
-            currentGamingName || localStorage.getItem("guestGamingName");
-          showScreen("game-screen");
-          initGame();
-        } else {
-          // Only show name input if we don't have a gaming name
-          document.getElementById("game-setup").style.display = "flex";
-          document.querySelector(".game-area").style.display = "none";
-          document.getElementById("word-input").style.display = "none";
-          document.getElementById("gaming-name-input").value = "";
-          showScreen("game-screen");
-        }
-
-        if (gameInterval) {
-          clearTimeout(gameInterval);
-          gameInterval = null;
-        }
-      }
+      console.log("Main script loaded");
 
       // Add missing fetchLeaderboard function
       async function fetchLeaderboard() {
@@ -1031,6 +788,9 @@
         }
       }
 
+      // Make fetchLeaderboard available to game.js
+      window.fetchLeaderboard = fetchLeaderboard;
+
       // Add missing checkAuth function
       async function checkAuth() {
         try {
@@ -1042,6 +802,7 @@
 
           if (user) {
             currentUser = user;
+            window.currentUser = user;
             updateAuthUI(true);
             await loadProfileStats();
             await checkGamingName();
@@ -1104,6 +865,7 @@
           if (error) throw error;
 
           currentGamingName = newName;
+          window.currentGamingName = newName;
           document.getElementById("current-gaming-name").textContent = newName;
           return true;
         } catch (error) {
@@ -1111,6 +873,9 @@
           return false;
         }
       }
+
+      // Make updateGamingName available to game.js
+      window.updateGamingName = updateGamingName;
 
       // Add check gaming name function
       async function checkGamingName() {
@@ -1124,6 +889,7 @@
           if (error) throw error;
 
           currentGamingName = data.gaming_name;
+          window.currentGamingName = data.gaming_name;
           document.getElementById("current-gaming-name").textContent =
             currentGamingName || "Not Set";
         } catch (error) {
@@ -1131,7 +897,7 @@
         }
       }
 
-      // Update showScreen function to handle profile
+      // Update showScreen function to handle profile and game screens
       function showScreen(screenId) {
         document.querySelectorAll(".screen").forEach((screen) => {
           screen.classList.remove("active");
@@ -1143,8 +909,15 @@
           checkGamingName();
         } else if (screenId === "leaderboard-screen") {
           fetchLeaderboard();
+        } else if (screenId === "game-screen") {
+          // Use the game module's function to show game screen
+          gameModule.showGameScreen();
+          return; // Return early as gameModule.showGameScreen handles the rest
         }
       }
+
+      // Make showScreen available to game.js
+      window.showScreen = showScreen;
 
       // Add gaming name modal handling
       function showGamingNameModal(isUpdate = false) {
@@ -1156,50 +929,35 @@
         }
       }
 
-      // Add missing updateScore function
-      function updateScore() {
-        document.getElementById("score").textContent = score;
-
-        // Calculate and update WPM
-        const gameTimeInMinutes = (Date.now() - gameStartTime) / 60000;
-        const currentWpm = Math.round(wordsTyped / gameTimeInMinutes);
-        document.getElementById("wpm").textContent = currentWpm;
+      // Logout
+      async function logout() {
+        await supabase.auth.signOut();
+        currentUser = null;
+        currentGamingName = null;
+        isGuest = false;
+        window.currentUser = null;
+        window.currentGamingName = null;
+        window.isGuest = false;
+        updateAuthUI(false);
+        showScreen("home-screen");
       }
 
-      // Add missing gainLife function
-      function gainLife() {
-        if (lives < 3) {
-          lives++;
-          updateLives();
-        }
-      }
-
-      // Add missing loseLife function
-      function loseLife() {
-        lives--;
-        updateLives();
-        if (lives <= 0) {
-          gameOver();
-        }
-      }
-
-      // Save score
-      async function saveScore(score, wpm) {
+      // Sign in with Google
+      async function signInWithGoogle() {
         try {
-          const scoreData = {
-            user_id: currentUser?.id,
-            username: currentGamingName, // Use gaming name for both guests and logged-in users
-            score: score,
-            wpm: wpm,
-          };
-
-          const { error } = await supabase.from("scores").insert([scoreData]);
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              queryParams: {
+                access_type: "offline",
+                prompt: "consent",
+              },
+            },
+          });
 
           if (error) throw error;
-
-          fetchLeaderboard(); // Changed from updateLeaderboard to fetchLeaderboard
         } catch (error) {
-          console.error("Error saving score:", error);
+          console.error("Error signing in with Google:", error.message);
         }
       }
 
@@ -1227,11 +985,16 @@
       supabase.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_IN") {
           currentUser = session.user;
+          window.currentUser = session.user;
           updateAuthUI(true);
           checkGamingName();
         } else if (event === "SIGNED_OUT") {
           currentUser = null;
           currentGamingName = null;
+          isGuest = false;
+          window.currentUser = null;
+          window.currentGamingName = null;
+          window.isGuest = false;
           updateAuthUI(false);
           showScreen("home-screen");
         }
@@ -1257,18 +1020,21 @@
           modal.classList.add("active");
         } else {
           currentGamingName = profile.gaming_name;
-          showGameScreen();
+          window.currentGamingName = profile.gaming_name;
+          gameModule.showGameScreen();
         }
       }
 
       // Update playAsGuest function
       function playAsGuest() {
         isGuest = true;
+        window.isGuest = true;
         const guestName = localStorage.getItem("guestGamingName");
         if (guestName) {
           // If guest already has a name, start game directly
           currentGamingName = guestName;
-          showGameScreen();
+          window.currentGamingName = guestName;
+          gameModule.showGameScreen();
         } else {
           // Only show modal if guest doesn't have a name
           const modal = document.getElementById("gaming-name-modal");
@@ -1336,6 +1102,7 @@
             }
 
             currentGamingName = gamingName;
+            window.currentGamingName = gamingName;
             if (document.getElementById("current-gaming-name")) {
               document.getElementById("current-gaming-name").textContent =
                 gamingName;
@@ -1348,54 +1115,18 @@
         } else {
           // Guest player
           currentGamingName = gamingName;
+          window.currentGamingName = gamingName;
           isGuest = true;
+          window.isGuest = true;
         }
 
         modal.classList.remove("active");
         input.value = "";
 
         if (!isProfileUpdate) {
-          showScreen("game-screen");
+          gameModule.showGameScreen();
         }
       }
-
-      // Logout
-      async function logout() {
-        await supabase.auth.signOut();
-        currentUser = null;
-        currentGamingName = null;
-        isGuest = false;
-        updateAuthUI(false);
-        showScreen("home-screen");
-      }
-
-      // Sign in with Google
-      async function signInWithGoogle() {
-        try {
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-              queryParams: {
-                access_type: "offline",
-                prompt: "consent",
-              },
-            },
-          });
-
-          if (error) throw error;
-        } catch (error) {
-          console.error("Error signing in with Google:", error.message);
-        }
-      }
-
-      // Restart game
-      function restartGame() {
-        showScreen("game-screen");
-        initGame();
-      }
-
-      // Initialize game
-      checkAuth();
 
       // Add close gaming name modal function
       function closeGamingNameModal() {
@@ -1403,51 +1134,16 @@
         modal.classList.remove("active");
         if (isGuest) {
           isGuest = false;
+          window.isGuest = false;
           showScreen("home-screen");
         }
       }
 
-      // Update game over to include escape option
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          if (gameInterval) {
-            clearTimeout(gameInterval);
-            showScreen("home-screen");
-          }
-        }
-      });
-
-      function updateLives() {
-        const livesContainer = document.getElementById("lives");
-        livesContainer.innerHTML = "❤️".repeat(lives);
-      }
-
-      function startGameWithName() {
-        const gamingNameInput = document.getElementById("gaming-name-input");
-        const gamingName = gamingNameInput.value.trim();
-
-        if (!gamingName) {
-          alert("Please enter a gaming name to start!");
-          return;
-        }
-
-        // Update gaming name in UI and storage
-        document.getElementById("player-name").textContent = gamingName;
-        if (!isGuest) {
-          updateGamingName(gamingName);
-        } else {
-          localStorage.setItem("guestGamingName", gamingName);
-        }
-
-        // Hide setup, show game
-        document.getElementById("game-setup").style.display = "none";
-        document.querySelector(".game-area").style.display = "block";
-        document.getElementById("word-input").style.display = "block";
-        document.getElementById("word-input").focus();
-
-        // Start the game
-        initGame();
-      }
+      // Initialize game
+      checkAuth();
     </script>
+
+    <!-- Add the game.js script after main script -->
+    <script src="game.js"></script>
   </body>
 </html>
