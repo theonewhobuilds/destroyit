@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cyberpunk Typing Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Courier New", monospace;
+      }
+
+      body {
+        background-color: #000000;
+        color: #00f7ff;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        height: 800px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .game-container {
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 2px solid #00f7ff;
+        box-shadow: 0 0 20px #00f7ff;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .game-area {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .stats {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 1.5em;
+        z-index: 100;
+        color: #00f7ff;
+        text-shadow: 0 0 5px #00f7ff;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .game-status {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 3em;
+        color: #ff00ff;
+        text-shadow: 0 0 10px #ff00ff;
+        display: none;
+      }
+
+      .game-status.visible {
+        display: block;
+      }
+
+      .input-container {
+        width: 100%;
+        padding: 20px;
+        background-color: rgba(0, 0, 0, 0.8);
+        border: 2px solid #00f7ff;
+        box-shadow: 0 0 20px #00f7ff;
+        display: flex;
+        align-items: center;
+      }
+
+      #word-input {
+        flex: 1;
+        padding: 15px;
+        background: none;
+        border: 2px solid #ff00ff;
+        color: #00f7ff;
+        font-size: 1.5em;
+        text-align: center;
+        outline: none;
+      }
+
+      .screen {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: none;
+      }
+
+      .screen.active {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .title {
+        font-size: 3em;
+        text-shadow: 0 0 10px #00f7ff;
+        margin-bottom: 30px;
+        color: #00f7ff;
+      }
+
+      .btn {
+        background: none;
+        border: 2px solid #00f7ff;
+        color: #00f7ff;
+        padding: 15px 30px;
+        font-size: 1.2em;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .btn:hover {
+        background-color: #ff00ff;
+        border-color: #ff00ff;
+        color: #000;
+        box-shadow: 0 0 20px #ff00ff;
+      }
+
+      .falling-object {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      .falling-object .shape {
+        font-size: 4em;
+        color: #00f7ff;
+        text-shadow: 0 0 10px #00f7ff;
+        transform-origin: center;
+        animation: pulse 2s infinite;
+      }
+
+      .falling-object .word {
+        font-size: 1em;
+        color: #00f7ff;
+        text-shadow: 0 0 5px #00f7ff;
+        margin-top: -10px;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .leaderboard {
+        width: 80%;
+        max-width: 400px;
+        margin: 20px auto;
+        border: 2px solid #00f7ff;
+        padding: 20px;
+        box-shadow: 0 0 20px #00f7ff;
+      }
+
+      .leaderboard-item {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+        padding: 5px;
+        border-bottom: 1px solid #00f7ff;
+      }
+
+      .form-group {
+        margin: 20px 0;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 10px;
+        background: none;
+        border: 2px solid #00f7ff;
+        color: #00f7ff;
+        margin-top: 5px;
+      }
+
+      .lives {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .life {
+        width: 20px;
+        height: 20px;
+        background-color: #ff00ff;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #ff00ff;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Add Supabase JS library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <div class="container">
+      <div id="home-screen" class="screen active">
+        <h1 class="title">Cyberpunk Typing</h1>
+        <button class="btn" id="play-btn" onclick="checkAuthAndPlay()">
+          Play Game
+        </button>
+        <button class="btn" onclick="showScreen('leaderboard-screen')">
+          Leaderboard
+        </button>
+        <button class="btn" id="login-btn" onclick="signInWithGoogle()">
+          Sign in with Google
+        </button>
+        <button
+          class="btn"
+          id="logout-btn"
+          onclick="logout()"
+          style="display: none"
+        >
+          Logout
+        </button>
+      </div>
+
+      <div id="game-screen" class="screen">
+        <div class="game-container">
+          <div class="game-area">
+            <div class="stats">
+              <div>Score: <span id="score">0</span></div>
+              <div>Lives: <span id="lives-text">3</span></div>
+            </div>
+            <div class="game-status" id="game-status">PAUSED</div>
+            <div class="lives" id="lives"></div>
+          </div>
+        </div>
+        <div class="input-container">
+          <input
+            type="text"
+            id="word-input"
+            placeholder="Type the word..."
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <div id="end-screen" class="screen">
+        <h2 class="title">Game Over</h2>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <p>Typing Speed: <span id="typing-speed">0</span> WPM</p>
+        <button class="btn" onclick="restartGame()">Play Again</button>
+        <button class="btn" onclick="showScreen('leaderboard-screen')">
+          Leaderboard
+        </button>
+        <button class="btn" onclick="showScreen('home-screen')">Home</button>
+      </div>
+
+      <div id="leaderboard-screen" class="screen">
+        <h2 class="title">Leaderboard</h2>
+        <div class="leaderboard" id="leaderboard"></div>
+        <button class="btn" onclick="showScreen('home-screen')">
+          Back to Home
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Initialize Supabase client
+      const supabaseUrl = "https://ikbnuqabgdgikorhipnm.supabase.co";
+      const supabaseKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrYm51cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMDU5NjEsImV4cCI6MjA1ODY4MTk2MX0.hK6qmYgWe62yn-cXfRgzr9cX-MWpyfxRUjL2jAIJjoU";
+      let supabase;
+
+      try {
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+      } catch (error) {
+        console.error("Supabase initialization error:", error);
+        // Fallback to local storage if Supabase fails
+        supabase = {
+          auth: {
+            getUser: async () => ({ data: { user: null }, error: null }),
+            signInWithOAuth: async () => ({
+              data: { user: null },
+              error: new Error("Supabase not configured"),
+            }),
+            signOut: async () => ({ error: null }),
+          },
+          from: () => ({
+            select: () => ({ data: [], error: null }),
+            insert: () => ({ error: null }),
+            eq: () => ({ data: [], error: null }),
+            single: () => ({ data: null, error: null }),
+            order: () => ({ limit: () => ({ data: [], error: null }) }),
+          }),
+        };
+      }
+
+      // Authentication state
+      let currentUser = null;
+
+      // Check if user is logged in on page load
+      async function checkAuth() {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (user) {
+          currentUser = user;
+          updateAuthUI(true);
+        } else {
+          updateAuthUI(false);
+        }
+      }
+
+      // Update UI based on auth state
+      function updateAuthUI(isLoggedIn) {
+        document.getElementById("login-btn").style.display = isLoggedIn
+          ? "none"
+          : "block";
+        document.getElementById("logout-btn").style.display = isLoggedIn
+          ? "block"
+          : "none";
+      }
+
+      // Sign in with Google
+      async function signInWithGoogle() {
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              queryParams: {
+                access_type: "offline",
+                prompt: "consent",
+              },
+            },
+          });
+
+          if (error) throw error;
+        } catch (error) {
+          console.error("Error signing in with Google:", error.message);
+        }
+      }
+
+      // Check auth before starting game
+      async function checkAuthAndPlay() {
+        if (currentUser) {
+          showScreen("game-screen");
+        } else {
+          // Ask if they want to play as guest or sign in
+          if (
+            confirm(
+              "Would you like to sign in to save your scores? Click Cancel to play as guest."
+            )
+          ) {
+            signInWithGoogle();
+          } else {
+            showScreen("game-screen");
+          }
+        }
+      }
+
+      // Logout
+      async function logout() {
+        await supabase.auth.signOut();
+        currentUser = null;
+        updateAuthUI(false);
+        showScreen("home-screen");
+      }
+
+      // Update leaderboard
+      async function updateLeaderboard(score, wpm) {
+        if (!currentUser) return;
+
+        try {
+          // Get or create user profile
+          let { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", currentUser.id)
+            .single();
+
+          if (!profile) {
+            // Create profile if it doesn't exist
+            const username =
+              currentUser.user_metadata.full_name ||
+              currentUser.user_metadata.name ||
+              currentUser.email.split("@")[0];
+
+            await supabase.from("profiles").insert([
+              {
+                id: currentUser.id,
+                username: username,
+                email: currentUser.email,
+              },
+            ]);
+
+            profile = { username };
+          }
+
+          // Insert score
+          await supabase.from("scores").insert([
+            {
+              user_id: currentUser.id,
+              username: profile.username,
+              score: score,
+              wpm: wpm,
+            },
+          ]);
+
+          // Update leaderboard display
+          await fetchLeaderboard();
+        } catch (error) {
+          console.error("Error updating leaderboard:", error);
+        }
+      }
+
+      // Fetch leaderboard data
+      async function fetchLeaderboard() {
+        try {
+          const { data: scores, error } = await supabase
+            .from("scores")
+            .select("username, score, wpm")
+            .order("score", { ascending: false })
+            .order("wpm", { ascending: false })
+            .limit(10);
+
+          if (error) throw error;
+
+          const leaderboardElement = document.getElementById("leaderboard");
+          leaderboardElement.innerHTML = scores
+            .map(
+              (entry, index) => `
+              <div class="leaderboard-item">
+                <span>${index + 1}. ${entry.username}</span>
+                <span>Score: ${entry.score} | WPM: ${entry.wpm}</span>
+              </div>
+            `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error fetching leaderboard:", error);
+        }
+      }
+
+      // Show different screens
+      function showScreen(screenId) {
+        document.querySelectorAll(".screen").forEach((screen) => {
+          screen.classList.remove("active");
+        });
+        document.getElementById(screenId).classList.add("active");
+
+        // Start game when game screen is shown
+        if (screenId === "game-screen") {
+          startGame();
+        } else if (screenId === "leaderboard-screen") {
+          fetchLeaderboard();
+        }
+      }
+
+      // Game variables
+      let score = 0;
+      let lives = 3;
+      let baseGameSpeed = 2000;
+      let gameSpeed = baseGameSpeed;
+      let spawnCount = 1;
+      let fallingObjects = [];
+      let startTime;
+      let wordsTyped = 0;
+      let totalCharactersTyped = 0;
+      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+      let spawnInterval;
+      let isPaused = false;
+
+      // Speed ranges for different score levels
+      const speedRanges = {
+        0: { min: 1, max: 2 }, // 0-49 points
+        50: { min: 2, max: 3 }, // 50-99 points
+        100: { min: 3, max: 4 }, // 100-149 points
+        150: { min: 4, max: 5 }, // 150+ points
+      };
+
+      // Get current speed range based on score
+      function getSpeedRange() {
+        const level = Math.floor(score / 50) * 50;
+        const maxLevel = Math.max(...Object.keys(speedRanges).map(Number));
+        const rangeKey = Math.min(level, maxLevel);
+        return speedRanges[rangeKey];
+      }
+
+      // Get random speed within current range
+      function getRandomSpeed() {
+        const range = getSpeedRange();
+        return range.min + Math.random() * (range.max - range.min);
+      }
+
+      // Programming-related words
+      const words = [
+        "function",
+        "variable",
+        "array",
+        "object",
+        "string",
+        "number",
+        "boolean",
+        "loop",
+        "if",
+        "else",
+        "return",
+        "class",
+        "method",
+        "property",
+        "const",
+        "let",
+        "var",
+        "async",
+        "await",
+        "promise",
+        "callback",
+        "module",
+        "import",
+        "export",
+        "interface",
+        "type",
+        "enum",
+        "try",
+        "catch",
+        "finally",
+        "throw",
+      ];
+
+      // Shapes for falling objects
+      const shapes = ["⬡", "⬢", "⬣", "⬤", "⬥", "⬦", "⬧", "⬨", "⬩", "⬪"];
+
+      // Start game
+      function startGame() {
+        // Clear any existing intervals and objects
+        if (spawnInterval) {
+          clearInterval(spawnInterval);
+          spawnInterval = null;
+        }
+
+        // Clear existing objects
+        const gameArea = document.querySelector(".game-area");
+        const existingObjects = gameArea.querySelectorAll(".falling-object");
+        existingObjects.forEach((obj) => {
+          if (obj.interval) {
+            clearInterval(obj.interval);
+          }
+          obj.remove();
+        });
+
+        // Reset game state
+        score = 0;
+        lives = 3;
+        baseGameSpeed = 2000;
+        gameSpeed = baseGameSpeed;
+        spawnCount = 1;
+        fallingObjects = [];
+        wordsTyped = 0;
+        totalCharactersTyped = 0;
+        startTime = Date.now();
+        isPaused = false;
+
+        // Update UI
+        updateScore();
+        updateLives();
+
+        // Reset input
+        const wordInput = document.getElementById("word-input");
+        wordInput.value = "";
+        wordInput.focus();
+
+        // Hide pause status
+        const gameStatus = document.getElementById("game-status");
+        gameStatus.classList.remove("visible");
+        gameStatus.textContent = "";
+
+        // Reset game area
+        gameArea.innerHTML = `
+          <div class="stats">
+            <div>Score: <span id="score">0</span></div>
+            <div>Lives: <span id="lives-text">3</span></div>
+          </div>
+          <div class="game-status" id="game-status"></div>
+          <div class="lives" id="lives"></div>
+        `;
+
+        // Start with initial objects
+        checkAndSpawnObjects();
+      }
+
+      // Check and spawn objects
+      function checkAndSpawnObjects() {
+        if (
+          !document
+            .getElementById("game-screen")
+            .classList.contains("active") ||
+          isPaused
+        ) {
+          return;
+        }
+
+        const currentObjects =
+          document.querySelectorAll(".falling-object").length;
+        const requiredObjects = Math.min(4, Math.floor(score / 50) + 1);
+
+        if (currentObjects < requiredObjects) {
+          const objectsToSpawn = requiredObjects - currentObjects;
+          for (let i = 0; i < objectsToSpawn; i++) {
+            setTimeout(() => {
+              if (
+                !isPaused &&
+                document
+                  .getElementById("game-screen")
+                  .classList.contains("active")
+              ) {
+                spawnObject();
+              }
+            }, i * 500);
+          }
+        }
+      }
+
+      // Update score
+      function updateScore() {
+        const oldScore = score;
+        document.getElementById("score").textContent = score;
+
+        // Check for milestone (every 50 points)
+        if (Math.floor(score / 50) > Math.floor(oldScore / 50)) {
+          // Increase difficulty
+          spawnCount = Math.min(4, Math.floor(score / 50) + 1);
+          console.log(
+            `Level up! Score: ${score}, SpawnCount: ${spawnCount}, Speed Range:`,
+            getSpeedRange()
+          );
+
+          // Ensure correct number of objects
+          checkAndSpawnObjects();
+        }
+      }
+
+      // Update lives display
+      function updateLives() {
+        const livesContainer = document.getElementById("lives");
+        const livesText = document.getElementById("lives-text");
+        livesContainer.innerHTML = "";
+        livesText.textContent = lives;
+        for (let i = 0; i < lives; i++) {
+          const life = document.createElement("div");
+          life.className = "life";
+          livesContainer.appendChild(life);
+        }
+      }
+
+      // Lose a life
+      function loseLife() {
+        lives--;
+        updateLives();
+        if (lives <= 0) {
+          endGame();
+        }
+      }
+
+      // Gain a life
+      function gainLife() {
+        if (lives < 5) {
+          lives++;
+          updateLives();
+        }
+      }
+
+      // End game
+      function endGame() {
+        // Clear intervals
+        if (spawnInterval) {
+          clearInterval(spawnInterval);
+        }
+
+        fallingObjects.forEach((obj) => {
+          if (obj.interval) {
+            clearInterval(obj.interval);
+          }
+        });
+
+        const timeElapsed = Math.max(0.1, (Date.now() - startTime) / 1000 / 60); // Minimum 0.1 minutes to avoid division by zero
+        const wpm = Math.round(totalCharactersTyped / 5 / timeElapsed);
+
+        document.getElementById("final-score").textContent = score;
+        document.getElementById("typing-speed").textContent = wpm;
+
+        if (currentUser) {
+          updateLeaderboard(score, wpm);
+        }
+
+        showScreen("end-screen");
+      }
+
+      // Restart game
+      function restartGame() {
+        startGame();
+        showScreen("game-screen");
+      }
+
+      // Spawn falling object
+      function spawnObject() {
+        try {
+          const word = words[Math.floor(Math.random() * words.length)];
+          const shape = shapes[Math.floor(Math.random() * shapes.length)];
+          const container = document.querySelector(".container");
+          const gameArea = document.querySelector(".game-area");
+
+          if (!container || !gameArea) return;
+
+          const x = Math.random() * (container.offsetWidth - 100);
+          const object = document.createElement("div");
+          object.className = "falling-object";
+
+          // Create separate elements for shape and word
+          const shapeElement = document.createElement("div");
+          shapeElement.className = "shape";
+          shapeElement.textContent = shape;
+          shapeElement.style.transform = `scale(${0.8 + Math.random() * 0.4})`;
+
+          const wordElement = document.createElement("div");
+          wordElement.className = "word";
+          wordElement.textContent = word;
+
+          object.appendChild(shapeElement);
+          object.appendChild(wordElement);
+
+          object.style.left = `${x}px`;
+          object.style.top = "-50px";
+          object.dataset.word = word;
+          object.dataset.speed = getRandomSpeed(); // Assign random speed within current range
+          gameArea.appendChild(object);
+          fallingObjects.push(object);
+          moveObject(object);
+        } catch (error) {
+          console.error("Error spawning object:", error);
+        }
+      }
+
+      // Move falling object
+      function moveObject(object) {
+        try {
+          const container = document.querySelector(".game-container");
+          if (!container) return;
+
+          let position = -50;
+          const objectSpeed = parseFloat(object.dataset.speed);
+
+          const interval = setInterval(() => {
+            if (
+              !document
+                .getElementById("game-screen")
+                .classList.contains("active") ||
+              isPaused
+            ) {
+              return;
+            }
+
+            position += objectSpeed;
+            object.style.top = `${position}px`;
+
+            if (position > container.offsetHeight) {
+              clearInterval(interval);
+              object.remove();
+              fallingObjects = fallingObjects.filter((obj) => obj !== object);
+              loseLife();
+              checkAndSpawnObjects();
+            }
+          }, 20);
+
+          object.interval = interval;
+        } catch (error) {
+          console.error("Error moving object:", error);
+        }
+      }
+
+      // Toggle pause
+      function togglePause() {
+        isPaused = !isPaused;
+        const gameStatus = document.getElementById("game-status");
+        gameStatus.textContent = isPaused ? "PAUSED" : "";
+        gameStatus.classList.toggle("visible", isPaused);
+      }
+
+      // Handle word input
+      document.getElementById("word-input").addEventListener("input", (e) => {
+        if (isPaused) {
+          e.target.value = "";
+          return;
+        }
+
+        const input = e.target.value.toLowerCase().trim();
+        if (!input) return;
+
+        const matchedObject = fallingObjects.find(
+          (object) => object.dataset.word.toLowerCase() === input
+        );
+
+        if (matchedObject) {
+          // Award points based on word length and current level
+          const level = Math.floor(score / 50);
+          const pointMultiplier = 1 + level * 0.5;
+          score += Math.round(
+            matchedObject.dataset.word.length * pointMultiplier
+          );
+
+          wordsTyped++;
+          totalCharactersTyped += matchedObject.dataset.word.length;
+          updateScore();
+
+          // Clear the matched object
+          if (matchedObject.interval) {
+            clearInterval(matchedObject.interval);
+          }
+          matchedObject.remove();
+          fallingObjects = fallingObjects.filter(
+            (obj) => obj !== matchedObject
+          );
+          e.target.value = "";
+
+          // Small chance to gain a life if below max
+          if (Math.random() < 0.1 && lives < 3) {
+            gainLife();
+          }
+
+          // Check if we need to spawn new objects
+          checkAndSpawnObjects();
+        }
+      });
+
+      // Handle keydown events
+      document.addEventListener("keydown", (e) => {
+        // Space to pause only when game is active
+        if (
+          e.code === "Space" &&
+          document.getElementById("game-screen").classList.contains("active")
+        ) {
+          e.preventDefault();
+          togglePause();
+          return;
+        }
+
+        // Escape to return to home screen
+        if (e.code === "Escape") {
+          showScreen("home-screen");
+          return;
+        }
+      });
+
+      // Initialize game
+      checkAuth();
+    </script>
+  </body>
+</html>
