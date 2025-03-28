@@ -793,6 +793,9 @@
           checkGamingName();
         } else if (screenId === "leaderboard-screen") {
           fetchLeaderboard();
+        } else if (screenId === "game-screen") {
+          // Automatically start the game when showing game screen
+          startGame();
         }
       }
 
@@ -1028,6 +1031,16 @@
         }
 
         initGame();
+
+        // Clear any existing interval first
+        if (gameInterval) {
+          clearInterval(gameInterval);
+        }
+
+        // Spawn initial objects
+        spawnObject();
+        spawnObject();
+
         gameInterval = setInterval(() => {
           updateGame();
           checkAndSpawnObjects();
