@@ -117,7 +117,9 @@
         border: 1px solid #00ffff;
         border-radius: 3px;
         z-index: 1;
-        will-change: transform;
+        /* Reset any transformations */
+        transform: none !important;
+        transition: none !important;
       }
 
       .gaming-name-input {
@@ -772,80 +774,12 @@
         updateLives();
 
         // Clear any existing game state
-        if (gameInterval) {
-          cancelAnimationFrame(gameInterval);
-          gameInterval = null;
-        }
+        clearGameInterval();
 
         // Start game loop using requestAnimationFrame
         startGameLoop();
         // Schedule first word spawn
         setTimeout(spawnObject, 1000);
-      }
-
-      function startGameLoop() {
-        console.log("Starting game loop");
-        // Create an animation loop that runs continuously with high FPS
-        let lastTime = 0;
-
-        function animate(timestamp) {
-          // Only update a few times per second to avoid too many DOM updates
-          if (!lastTime || timestamp - lastTime >= 16) {
-            // ~60fps
-            updateGame();
-            lastTime = timestamp;
-          }
-
-          if (lives > 0) {
-            gameInterval = requestAnimationFrame(animate);
-          }
-        }
-        // Start the animation loop
-        gameInterval = requestAnimationFrame(animate);
-      }
-
-      function updateGame() {
-        // Get game area
-        const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight - 100;
-
-        // Loop through words in reverse order so we can safely remove while iterating
-        for (let i = fallingObjects.length - 1; i >= 0; i--) {
-          const obj = fallingObjects[i];
-
-          // Update position with speed value
-          obj.y += obj.speed;
-
-          // Make sure the element exists before updating its position
-          if (obj.element && document.body.contains(obj.element)) {
-            // Apply position directly with CSS top instead of transform
-            obj.element.style.top = `${Math.round(obj.y)}px`;
-
-            // Log position for first word for debugging
-            if (i === 0 && fallingObjects.length > 0) {
-              console.log(
-                `Word ${obj.word} at y=${obj.y}, visual position=${obj.element.style.top}`
-              );
-            }
-
-            // Check if word hit bottom
-            if (obj.y > maxY) {
-              obj.element.remove();
-              fallingObjects.splice(i, 1);
-              loseLife();
-            }
-          } else {
-            // Element no longer exists
-            fallingObjects.splice(i, 1);
-          }
-        }
-
-        // Update WPM
-        if (wordsTyped > 0) {
-          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60;
-          const wpm = Math.round(wordsTyped / timeElapsed);
-          document.getElementById("wpm").textContent = wpm.toString();
-        }
       }
 
       function spawnObject() {
@@ -866,24 +800,24 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20;
         const x = Math.random() * maxX;
 
-        // Set initial position correctly - position absolute requires both top and left
-        wordElement.style.position = "absolute";
-        wordElement.style.left = `${Math.round(x)}px`;
-        wordElement.style.top = "0px";
-        wordElement.style.zIndex = "10";
-
-        // Add to container
-        document.getElementById("words-container").appendChild(wordElement);
-
-        // Add to falling objects array with faster speed
+        // Create the falling object with all needed properties
         const fallingObj = {
           element: wordElement,
           word: word,
           x: Math.round(x),
           y: 0,
-          speed: 3 + Math.random() * 2, // Faster speed
+          speed: 3 + Math.random() * 2,
         };
 
+        // Position MUST be set to absolute for correct positioning
+        wordElement.style.position = "absolute";
+        wordElement.style.left = fallingObj.x + "px";
+        wordElement.style.top = "0px";
+
+        // Add to container
+        document.getElementById("words-container").appendChild(wordElement);
+
+        // Add to falling objects array
         fallingObjects.push(fallingObj);
 
         console.log(
@@ -900,12 +834,100 @@
         }
       }
 
-      function gameOver() {
-        // Cancel animation frame
+      // Completely rewrite animation logic with a simpler approach
+      function startGameLoop() {
+        console.log("Starting game loop");
+        // Start a simple animation loop
+        function gameLoop() {
+          if (lives <= 0) return;
+
+          updateGame();
+          gameInterval = setTimeout(gameLoop, 16); // ~60fps
+        }
+
+        // Start the game loop using setTimeout instead of requestAnimationFrame
+        gameInterval = setTimeout(gameLoop, 16);
+      }
+
+      function updateGame() {
+        // Get game area dimensions
+        const gameArea = document.querySelector(".game-area");
+        const maxY = gameArea.offsetHeight - 100;
+
+        // Loop through words in reverse order so we can safely remove while iterating
+        for (let i = fallingObjects.length - 1; i >= 0; i--) {
+          const obj = fallingObjects[i];
+
+          // Update position with speed value
+          obj.y += obj.speed;
+
+          // Apply position using DOM manipulation
+          if (obj.element) {
+            obj.element.style.top = Math.round(obj.y) + "px";
+
+            // Debug log position for first word
+            if (i === 0) {
+              console.log(
+                `Word ${obj.word} at y=${obj.y}, DOM top=${obj.element.style.top}`
+              );
+            }
+
+            // Check if word hit bottom
+            if (obj.y > maxY) {
+              if (obj.element.parentNode) {
+                obj.element.parentNode.removeChild(obj.element);
+              }
+              fallingObjects.splice(i, 1);
+              loseLife();
+            }
+          } else {
+            // Element no longer exists
+            fallingObjects.splice(i, 1);
+          }
+        }
+
+        // Update WPM
+        if (wordsTyped > 0) {
+          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60;
+          const wpm = Math.round(wordsTyped / timeElapsed);
+          document.getElementById("wpm").textContent = wpm.toString();
+        }
+      }
+
+      // Update word removal logic to be more reliable
+      document.getElementById("word-input").addEventListener("input", (e) => {
+        const input = e.target.value.trim().toLowerCase();
+
+        if (!input) return;
+
+        for (let i = fallingObjects.length - 1; i >= 0; i--) {
+          const obj = fallingObjects[i];
+          if (input === obj.word.toLowerCase()) {
+            // Remove word and update score
+            if (obj.element && obj.element.parentNode) {
+              obj.element.parentNode.removeChild(obj.element);
+            }
+            fallingObjects.splice(i, 1);
+            score += obj.word.length;
+            wordsTyped++;
+            document.getElementById("score").textContent = score.toString();
+            e.target.value = "";
+            break; // Only remove one word at a time
+          }
+        }
+      });
+
+      // Update game clean up
+      function clearGameInterval() {
         if (gameInterval) {
-          cancelAnimationFrame(gameInterval);
+          clearTimeout(gameInterval);
           gameInterval = null;
         }
+      }
+
+      function gameOver() {
+        // Cancel animation frame
+        clearGameInterval();
 
         const finalWpm = Math.round(
           wordsTyped / ((Date.now() - gameStartTime) / 60000)
@@ -920,27 +942,6 @@
 
         showScreen("end-screen");
       }
-
-      // Update word input handler for better responsiveness
-      document.getElementById("word-input").addEventListener("input", (e) => {
-        const input = e.target.value.trim().toLowerCase();
-
-        if (!input) return;
-
-        for (let i = fallingObjects.length - 1; i >= 0; i--) {
-          const obj = fallingObjects[i];
-          if (input === obj.word.toLowerCase()) {
-            // Remove word and update score
-            obj.element.remove();
-            fallingObjects.splice(i, 1);
-            score += obj.word.length;
-            wordsTyped++;
-            document.getElementById("score").textContent = score.toString();
-            e.target.value = "";
-            break; // Only remove one word at a time
-          }
-        }
-      });
 
       // Reset game setup when showing game screen
       function showGameScreen() {
@@ -966,7 +967,7 @@
         }
 
         if (gameInterval) {
-          cancelAnimationFrame(gameInterval);
+          clearTimeout(gameInterval);
           gameInterval = null;
         }
       }
@@ -1410,7 +1411,7 @@
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           if (gameInterval) {
-            cancelAnimationFrame(gameInterval);
+            clearTimeout(gameInterval);
             showScreen("home-screen");
           }
         }
