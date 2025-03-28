@@ -492,8 +492,8 @@
   <body>
     <!-- Add Supabase JS library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-    <!-- Add environment configuration -->
-    <script src="/env-config.js"></script>
+    <!-- Add environment configuration with version to bust cache -->
+    <script src="/env-config.js?v=2"></script>
     <!-- Add checker for environment variables -->
     <script>
       // Check if environment variables are properly loaded
@@ -513,7 +513,9 @@
 
       // FALLBACK: Direct URL to ensure application works even if middleware fails
       // This URL is public anyway, so hardcoding is not a security risk
-      const FALLBACK_SUPABASE_URL = "https://ikbnuqabgdgikorhlpmm.supabase.co";
+      const FALLBACK_SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
+      // Force the URL to always use our hardcoded value as a last resort
+      window.SUPABASE_URL = FALLBACK_SUPABASE_URL;
     </script>
     <div class="container">
       <div id="home-screen" class="screen active">
@@ -654,18 +656,35 @@
       // Wait until DOM is loaded to initialize
       document.addEventListener("DOMContentLoaded", function () {
         try {
-          // HARDCODED VALUES - Completely bypass middleware
-          // These are public values meant for client-side use
-          const hardcodedUrl = "https://ikbnuqabgdgikorhipnm.supabase.co";
-          const hardcodedKey =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrwm51cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDEwMTYzMTIsImV4cCI6MjAx2Y1NzYzMTJ9.G7n1oadL6IFfJTd3dw14g5v60uXYAwnO2Q8xd3WqBgQ";
+          // Use middleware-provided URL or fallback to hardcoded one
+          let supabaseUrl = window.SUPABASE_URL || FALLBACK_SUPABASE_URL;
 
-          console.log(
-            "Using hardcoded Supabase credentials to bypass middleware issues"
+          // We still need the anon key from middleware
+          if (!window.SUPABASE_ANON_KEY) {
+            console.error("Missing Supabase Anon Key - cannot initialize");
+            return;
+          }
+
+          // Ensure URL has a protocol
+          if (
+            !supabaseUrl.startsWith("http://") &&
+            !supabaseUrl.startsWith("https://")
+          ) {
+            supabaseUrl = "https://" + supabaseUrl;
+          }
+
+          // Log URL information for debugging
+          console.log("Using Supabase URL:", {
+            url: supabaseUrl,
+            source: window.SUPABASE_URL ? "middleware" : "fallback",
+            valid: typeof supabaseUrl === "string" && supabaseUrl.length > 0,
+          });
+
+          // Initialize Supabase client with the validated URL
+          supabase = window.supabase.createClient(
+            supabaseUrl,
+            window.SUPABASE_ANON_KEY
           );
-
-          // Initialize Supabase client with hardcoded values
-          supabase = window.supabase.createClient(hardcodedUrl, hardcodedKey);
 
           // Initialize state variables
           let currentUser = null;
