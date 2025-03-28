@@ -175,33 +175,158 @@
       }
 
       .leaderboard {
-        width: 80%;
-        max-width: 400px;
+        width: 90%;
+        max-width: 1000px;
         margin: 20px auto;
-        border: 2px solid #00f7ff;
-        padding: 20px;
-        box-shadow: 0 0 20px #00f7ff;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.95);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .leaderboard-container {
+        border: 3px solid #00f7ff;
+        padding: 40px;
+        box-shadow: 0 0 30px #00f7ff, inset 0 0 20px rgba(0, 247, 255, 0.3);
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(
+          45deg,
+          rgba(0, 0, 0, 0.95),
+          rgba(0, 247, 255, 0.05)
+        );
+      }
+
+      .leaderboard-container::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+        animation: scan-line 2s linear infinite;
+      }
+
+      @keyframes scan-line {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      .leaderboard-title {
+        font-size: 3.5em;
+        text-align: center;
+        margin-bottom: 40px;
+        color: #00f7ff;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        text-shadow: 0 0 15px #00f7ff;
+        position: relative;
+        animation: glow 2s ease-in-out infinite alternate;
+      }
+
+      @keyframes glow {
+        from {
+          text-shadow: 0 0 15px #00f7ff, 0 0 25px #00f7ff;
+        }
+        to {
+          text-shadow: 0 0 30px #00f7ff, 0 0 40px #00f7ff;
+        }
+      }
+
+      .leaderboard-header {
+        display: grid;
+        grid-template-columns: 100px 2fr 1fr 1fr;
+        gap: 20px;
+        padding: 15px 20px;
+        border-bottom: 2px solid #ff00ff;
+        margin-bottom: 20px;
+        font-size: 1.4em;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #ff00ff;
+        text-shadow: 0 0 10px #ff00ff;
       }
 
       .leaderboard-item {
-        display: flex;
-        justify-content: space-between;
-        margin: 10px 0;
-        padding: 5px;
-        border-bottom: 1px solid #00f7ff;
-      }
-
-      .form-group {
-        margin: 20px 0;
-      }
-
-      .form-group input {
-        width: 100%;
-        padding: 10px;
-        background: none;
+        display: grid;
+        grid-template-columns: 100px 2fr 1fr 1fr;
+        gap: 20px;
+        margin: 15px 0;
+        padding: 20px;
         border: 2px solid #00f7ff;
+        background: rgba(0, 247, 255, 0.05);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .leaderboard-item:hover {
+        transform: translateX(10px);
+        background: rgba(0, 247, 255, 0.1);
+        box-shadow: 0 0 20px rgba(0, 247, 255, 0.4);
+      }
+
+      .leaderboard-item::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, #00f7ff, transparent);
+      }
+
+      .rank {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #ff00ff;
+        text-shadow: 0 0 8px #ff00ff;
+        display: flex;
+        align-items: center;
+      }
+
+      .username {
+        font-size: 1.6em;
         color: #00f7ff;
-        margin-top: 5px;
+        text-shadow: 0 0 8px #00f7ff;
+        display: flex;
+        align-items: center;
+      }
+
+      .score,
+      .wpm {
+        font-size: 1.6em;
+        color: #00f7ff;
+        text-shadow: 0 0 8px #00f7ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .back-btn {
+        position: relative;
+        margin-top: 40px;
+        padding: 20px 50px;
+        background: none;
+        border: 3px solid #ff00ff;
+        color: #ff00ff;
+        font-size: 1.4em;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        cursor: pointer;
+        transition: all 0.3s;
+        overflow: hidden;
+      }
+
+      .back-btn:hover {
+        background: #ff00ff;
+        color: #000;
+        box-shadow: 0 0 30px #ff00ff;
       }
 
       .lives {
@@ -218,6 +343,101 @@
         background-color: #ff00ff;
         border-radius: 50%;
         box-shadow: 0 0 10px #ff00ff;
+      }
+
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal.active {
+        display: flex;
+      }
+
+      .modal-content {
+        background: rgba(0, 0, 0, 0.95);
+        padding: 40px;
+        border: 3px solid #00f7ff;
+        box-shadow: 0 0 30px #00f7ff;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        position: relative;
+      }
+
+      .modal-title {
+        font-size: 2em;
+        color: #00f7ff;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+        text-shadow: 0 0 10px #00f7ff;
+      }
+
+      .gaming-name-input {
+        width: 100%;
+        padding: 15px;
+        background: none;
+        border: 2px solid #ff00ff;
+        color: #00f7ff;
+        font-size: 1.2em;
+        text-align: center;
+        outline: none;
+        margin-bottom: 20px;
+      }
+
+      .gaming-name-input:focus {
+        box-shadow: 0 0 15px #ff00ff;
+      }
+
+      /* Profile styles */
+      .profile-container {
+        width: 90%;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.95);
+        border: 3px solid #00f7ff;
+        box-shadow: 0 0 30px #00f7ff;
+      }
+
+      .profile-header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .stat-card {
+        padding: 20px;
+        border: 2px solid #ff00ff;
+        text-align: center;
+        background: rgba(255, 0, 255, 0.1);
+      }
+
+      .stat-value {
+        font-size: 2em;
+        color: #ff00ff;
+        text-shadow: 0 0 10px #ff00ff;
+      }
+
+      .stat-label {
+        font-size: 1.2em;
+        color: #00f7ff;
+        margin-top: 10px;
       }
     </style>
   </head>
@@ -240,12 +460,71 @@
         </button>
         <button
           class="btn"
+          id="profile-btn"
+          onclick="showScreen('profile-screen')"
+          style="display: none"
+        >
+          Profile
+        </button>
+        <button
+          class="btn"
           id="logout-btn"
           onclick="logout()"
           style="display: none"
         >
           Logout
         </button>
+      </div>
+
+      <!-- Gaming Name Modal -->
+      <div id="gaming-name-modal" class="modal">
+        <div class="modal-content">
+          <h2 class="modal-title">Choose Your Gaming Name</h2>
+          <input
+            type="text"
+            id="gaming-name-input"
+            class="gaming-name-input"
+            placeholder="Enter your gaming name"
+            maxlength="20"
+          />
+          <button class="btn" onclick="submitGamingName()">Continue</button>
+        </div>
+      </div>
+
+      <!-- Profile Screen -->
+      <div id="profile-screen" class="screen">
+        <div class="profile-container">
+          <div class="profile-header">
+            <h2 class="title">Your Profile</h2>
+            <div class="gaming-name">
+              <h3>Gaming Name: <span id="current-gaming-name"></span></h3>
+              <button class="btn" onclick="showGamingNameModal(true)">
+                Change Name
+              </button>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="stat-card">
+              <div class="stat-value" id="highest-score">0</div>
+              <div class="stat-label">Highest Score</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="best-wpm">0</div>
+              <div class="stat-label">Best WPM</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="games-played">0</div>
+              <div class="stat-label">Games Played</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="leaderboard-rank">#0</div>
+              <div class="stat-label">Best Ranking</div>
+            </div>
+          </div>
+          <button class="back-btn" onclick="showScreen('home-screen')">
+            Back to Home
+          </button>
+        </div>
       </div>
 
       <div id="game-screen" class="screen">
@@ -281,9 +560,10 @@
       </div>
 
       <div id="leaderboard-screen" class="screen">
-        <h2 class="title">Leaderboard</h2>
-        <div class="leaderboard" id="leaderboard"></div>
-        <button class="btn" onclick="showScreen('home-screen')">
+        <div class="leaderboard" id="leaderboard">
+          <!-- Leaderboard content will be dynamically inserted here -->
+        </div>
+        <button class="back-btn" onclick="showScreen('home-screen')">
           Back to Home
         </button>
       </div>
@@ -291,6 +571,7 @@
 
     <script>
       // Initialize Supabase client
+      // Updated with gaming name and profile features
       const supabaseUrl = window.SUPABASE_URL;
       const supabaseKey = window.SUPABASE_ANON_KEY;
       let supabase;
@@ -327,6 +608,8 @@
 
       // Authentication state
       let currentUser = null;
+      let currentGamingName = null;
+      let isGuest = false;
 
       // Check if user is logged in on page load
       async function checkAuth() {
@@ -336,9 +619,68 @@
         } = await supabase.auth.getUser();
         if (user) {
           currentUser = user;
+          await loadUserProfile();
           updateAuthUI(true);
         } else {
           updateAuthUI(false);
+        }
+      }
+
+      // Load user profile
+      async function loadUserProfile() {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", currentUser.id)
+            .single();
+
+          if (profile) {
+            currentGamingName = profile.gaming_name;
+            document.getElementById("current-gaming-name").textContent =
+              currentGamingName;
+            await loadUserStats();
+          } else {
+            showGamingNameModal();
+          }
+        } catch (error) {
+          console.error("Error loading profile:", error);
+        }
+      }
+
+      // Load user stats
+      async function loadUserStats() {
+        try {
+          const { data: scores } = await supabase
+            .from("scores")
+            .select("score, wpm")
+            .eq("user_id", currentUser.id)
+            .order("score", { ascending: false });
+
+          if (scores && scores.length > 0) {
+            const highestScore = Math.max(...scores.map((s) => s.score));
+            const bestWPM = Math.max(...scores.map((s) => s.wpm));
+            const gamesPlayed = scores.length;
+
+            // Get user's best rank
+            const { data: allScores } = await supabase
+              .from("scores")
+              .select("score")
+              .order("score", { ascending: false });
+
+            const userBestScore = scores[0].score;
+            const rank =
+              allScores.findIndex((s) => s.score === userBestScore) + 1;
+
+            document.getElementById("highest-score").textContent = highestScore;
+            document.getElementById("best-wpm").textContent = bestWPM;
+            document.getElementById("games-played").textContent = gamesPlayed;
+            document.getElementById(
+              "leaderboard-rank"
+            ).textContent = `#${rank}`;
+          }
+        } catch (error) {
+          console.error("Error loading stats:", error);
         }
       }
 
@@ -350,6 +692,124 @@
         document.getElementById("logout-btn").style.display = isLoggedIn
           ? "block"
           : "none";
+        document.getElementById("profile-btn").style.display = isLoggedIn
+          ? "block"
+          : "none";
+        document.getElementById("play-btn").onclick = isLoggedIn
+          ? () => checkAuthAndPlay()
+          : () => showGamingNameModal(false);
+      }
+
+      // Show gaming name modal
+      function showGamingNameModal(isProfileUpdate = false) {
+        const modal = document.getElementById("gaming-name-modal");
+        const input = document.getElementById("gaming-name-input");
+        modal.classList.add("active");
+        input.value = currentGamingName || "";
+        input.focus();
+
+        // Store whether this is a profile update or initial setup
+        modal.dataset.isProfileUpdate = isProfileUpdate;
+      }
+
+      // Submit gaming name
+      async function submitGamingName() {
+        const modal = document.getElementById("gaming-name-modal");
+        const input = document.getElementById("gaming-name-input");
+        const gamingName = input.value.trim();
+
+        if (!gamingName) {
+          alert("Please enter a gaming name");
+          return;
+        }
+
+        const isProfileUpdate = modal.dataset.isProfileUpdate === "true";
+
+        if (currentUser) {
+          try {
+            const { error } = await supabase.from("profiles").upsert({
+              id: currentUser.id,
+              gaming_name: gamingName,
+              email: currentUser.email,
+              updated_at: new Date().toISOString(),
+            });
+
+            if (error) throw error;
+            currentGamingName = gamingName;
+            document.getElementById("current-gaming-name").textContent =
+              gamingName;
+          } catch (error) {
+            console.error("Error updating gaming name:", error);
+            alert("Error updating gaming name. Please try again.");
+            return;
+          }
+        } else {
+          // Guest player
+          currentGamingName = gamingName;
+          isGuest = true;
+        }
+
+        modal.classList.remove("active");
+
+        if (!isProfileUpdate) {
+          showScreen("game-screen");
+        }
+      }
+
+      // Check auth before starting game
+      async function checkAuthAndPlay() {
+        if (currentUser) {
+          if (currentGamingName) {
+            showScreen("game-screen");
+          } else {
+            showGamingNameModal();
+          }
+        } else {
+          showGamingNameModal();
+        }
+      }
+
+      // Update leaderboard
+      async function updateLeaderboard(score, wpm) {
+        if (!currentGamingName) return;
+
+        try {
+          if (currentUser) {
+            await supabase.from("scores").insert([
+              {
+                user_id: currentUser.id,
+                username: currentGamingName,
+                score: score,
+                wpm: wpm,
+              },
+            ]);
+          } else if (isGuest) {
+            await supabase.from("scores").insert([
+              {
+                username: `${currentGamingName} (Guest)`,
+                score: score,
+                wpm: wpm,
+              },
+            ]);
+          }
+
+          await fetchLeaderboard();
+          if (currentUser) {
+            await loadUserStats();
+          }
+        } catch (error) {
+          console.error("Error updating leaderboard:", error);
+        }
+      }
+
+      // Logout
+      async function logout() {
+        await supabase.auth.signOut();
+        currentUser = null;
+        currentGamingName = null;
+        isGuest = false;
+        updateAuthUI(false);
+        showScreen("home-screen");
       }
 
       // Sign in with Google
@@ -371,79 +831,6 @@
         }
       }
 
-      // Check auth before starting game
-      async function checkAuthAndPlay() {
-        if (currentUser) {
-          showScreen("game-screen");
-        } else {
-          // Ask if they want to play as guest or sign in
-          if (
-            confirm(
-              "Would you like to sign in to save your scores? Click Cancel to play as guest."
-            )
-          ) {
-            signInWithGoogle();
-          } else {
-            showScreen("game-screen");
-          }
-        }
-      }
-
-      // Logout
-      async function logout() {
-        await supabase.auth.signOut();
-        currentUser = null;
-        updateAuthUI(false);
-        showScreen("home-screen");
-      }
-
-      // Update leaderboard
-      async function updateLeaderboard(score, wpm) {
-        if (!currentUser) return;
-
-        try {
-          // Get or create user profile
-          let { data: profile } = await supabase
-            .from("profiles")
-            .select("username")
-            .eq("id", currentUser.id)
-            .single();
-
-          if (!profile) {
-            // Create profile if it doesn't exist
-            const username =
-              currentUser.user_metadata.full_name ||
-              currentUser.user_metadata.name ||
-              currentUser.email.split("@")[0];
-
-            await supabase.from("profiles").insert([
-              {
-                id: currentUser.id,
-                username: username,
-                email: currentUser.email,
-              },
-            ]);
-
-            profile = { username };
-          }
-
-          // Insert score
-          await supabase.from("scores").insert([
-            {
-              user_id: currentUser.id,
-              username: profile.username,
-              score: score,
-              wpm: wpm,
-            },
-          ]);
-
-          // Update leaderboard display
-          await fetchLeaderboard();
-        } catch (error) {
-          console.error("Error updating leaderboard:", error);
-        }
-      }
-
       // Fetch leaderboard data
       async function fetchLeaderboard() {
         try {
@@ -457,16 +844,30 @@
           if (error) throw error;
 
           const leaderboardElement = document.getElementById("leaderboard");
-          leaderboardElement.innerHTML = scores
-            .map(
-              (entry, index) => `
-              <div class="leaderboard-item">
-                <span>${index + 1}. ${entry.username}</span>
-                <span>Score: ${entry.score} | WPM: ${entry.wpm}</span>
+          leaderboardElement.innerHTML = `
+            <div class="leaderboard-container">
+              <h2 class="leaderboard-title">CYBERPUNK ELITE</h2>
+              <div style="text-align: center; color: #ff00ff; margin-bottom: 30px; font-size: 1.2em; text-transform: uppercase; letter-spacing: 3px;">Top Typing Warriors</div>
+              <div class="leaderboard-header">
+                <div>RANK</div>
+                <div>PLAYER</div>
+                <div>SCORE</div>
+                <div>WPM</div>
               </div>
-            `
-            )
-            .join("");
+              ${scores
+                .map(
+                  (entry, index) => `
+                  <div class="leaderboard-item">
+                    <div class="rank">#${index + 1}</div>
+                    <div class="username">${entry.username}</div>
+                    <div class="score">${entry.score}</div>
+                    <div class="wpm">${entry.wpm}</div>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          `;
         } catch (error) {
           console.error("Error fetching leaderboard:", error);
         }
