@@ -118,7 +118,7 @@
         border-radius: 3px;
         z-index: 1;
         transform: translateZ(0); /* Enable hardware acceleration */
-        will-change: transform; /* Optimize animations */
+        will-change: transform, top; /* Optimize animations */
       }
 
       .gaming-name-input {
@@ -742,34 +742,11 @@
         "algorithm",
       ];
 
-      function startGameWithName() {
-        const gamingNameInput = document.getElementById("gaming-name-input");
-        const gamingName = gamingNameInput.value.trim();
-
-        if (!gamingName) {
-          alert("Please enter a gaming name to start!");
-          return;
-        }
-
-        // Update gaming name in UI and storage
-        document.getElementById("player-name").textContent = gamingName;
-        if (!isGuest) {
-          updateGamingName(gamingName);
-        } else {
-          localStorage.setItem("guestGamingName", gamingName);
-        }
-
-        // Hide setup, show game
-        document.getElementById("game-setup").style.display = "none";
-        document.querySelector(".game-area").style.display = "block";
-        document.getElementById("word-input").style.display = "block";
-        document.getElementById("word-input").focus();
-
-        // Start the game
-        initGame();
-      }
+      // Add console debugging
+      console.log("Game script loaded");
 
       function initGame() {
+        console.log("Game initialized");
         // Reset game state
         score = 0;
         lives = 3;
@@ -798,6 +775,7 @@
       }
 
       function startGameLoop() {
+        console.log("Starting game loop");
         gameInterval = requestAnimationFrame(updateGame);
       }
 
@@ -808,11 +786,19 @@
         // Update positions of all falling words
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
+          // Increase y position based on speed
           obj.y += obj.speed;
+          // Apply the new position
           obj.element.style.top = `${obj.y}px`;
+
+          // Log movement for debugging (first word only)
+          if (i === 0 && fallingObjects.length > 0) {
+            console.log(`Word: ${obj.word}, Y: ${obj.y}, Speed: ${obj.speed}`);
+          }
 
           // Remove if passed bottom
           if (obj.y > maxY) {
+            console.log(`Word hit bottom: ${obj.word}`);
             obj.element.remove();
             fallingObjects.splice(i, 1);
             loseLife();
@@ -833,6 +819,7 @@
       }
 
       function spawnObject() {
+        console.log("Spawning new word");
         // Don't spawn if game is over
         if (lives <= 0) return;
 
@@ -847,16 +834,22 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20; // Add padding
         const x = Math.random() * maxX;
 
-        wordElement.style.left = x + "px";
+        wordElement.style.left = `${x}px`;
         wordElement.style.top = "0px";
+
+        // Add explicit top and left positioning
+        wordElement.style.position = "absolute";
 
         document.getElementById("words-container").appendChild(wordElement);
 
+        console.log(`Created word: ${word} at position x:${x}, y:0`);
+
+        // Create falling object with higher speed
         fallingObjects.push({
           element: wordElement,
           word: word,
           y: 0,
-          speed: 2 + Math.random() * 1.5, // Increased speed
+          speed: 3 + Math.random() * 2, // Increased speed for better visibility
         });
 
         // Schedule next spawn with increasing frequency
@@ -1388,6 +1381,33 @@
       function updateLives() {
         const livesContainer = document.getElementById("lives");
         livesContainer.innerHTML = "❤️".repeat(lives);
+      }
+
+      function startGameWithName() {
+        const gamingNameInput = document.getElementById("gaming-name-input");
+        const gamingName = gamingNameInput.value.trim();
+
+        if (!gamingName) {
+          alert("Please enter a gaming name to start!");
+          return;
+        }
+
+        // Update gaming name in UI and storage
+        document.getElementById("player-name").textContent = gamingName;
+        if (!isGuest) {
+          updateGamingName(gamingName);
+        } else {
+          localStorage.setItem("guestGamingName", gamingName);
+        }
+
+        // Hide setup, show game
+        document.getElementById("game-setup").style.display = "none";
+        document.querySelector(".game-area").style.display = "block";
+        document.getElementById("word-input").style.display = "block";
+        document.getElementById("word-input").focus();
+
+        // Start the game
+        initGame();
       }
     </script>
   </body>
