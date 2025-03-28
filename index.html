@@ -1152,10 +1152,21 @@
 
         gameArea.appendChild(element);
 
-        // Calculate speed based on score
-        const scoreBracket = Math.floor(score / 50);
-        const minSpeed = 5 + scoreBracket * 5;
-        const maxSpeed = 10 + scoreBracket * 5;
+        // Calculate speed based on score - make it more gradual
+        // Base speed starts at 2-4
+        const baseMinSpeed = 2;
+        const baseMaxSpeed = 4;
+
+        // Speed increases by 0.05 units per point scored
+        const speedIncrease = score * 0.05;
+
+        // Capped at a reasonable maximum
+        const maxSpeedIncrease = 10;
+        const actualSpeedIncrease = Math.min(speedIncrease, maxSpeedIncrease);
+
+        // Final speed calculation
+        const minSpeed = baseMinSpeed + actualSpeedIncrease;
+        const maxSpeed = baseMaxSpeed + actualSpeedIncrease;
         const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
 
         fallingObjects.push({
