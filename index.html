@@ -25,29 +25,29 @@
       .container {
         width: 100%;
         max-width: 1200px;
-        height: 800px;
+        height: 100vh;
         position: relative;
         display: flex;
         flex-direction: column;
+        align-items: center;
+        justify-content: center;
         gap: 20px;
         padding: 20px;
       }
 
       .game-container {
-        margin-top: 60px;
-        margin-bottom: 60px;
+        width: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 20px;
-        width: 100%;
-        height: 100%;
+        justify-content: center;
         position: relative;
       }
 
       .game-area {
-        width: 800px;
-        height: 600px;
+        width: 1000px;
+        height: 700px;
         border: 2px solid #00ffff;
         position: relative;
         overflow: hidden;
@@ -75,19 +75,23 @@
         flex: 1;
         position: relative;
         width: 100%;
-        height: 100%;
+        height: calc(100% - 80px);
+        overflow: hidden;
       }
 
       .game-input-container {
         width: 100%;
+        height: 80px;
         padding: 20px;
         background: rgba(0, 0, 0, 0.9);
         border-top: 2px solid #ff00ff;
-        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .game-input {
-        width: 100%;
+        width: 80%;
         padding: 15px;
         background: rgba(0, 0, 0, 0.8);
         border: 2px solid #ff00ff;
@@ -432,6 +436,10 @@
         display: flex;
         gap: 10px;
         z-index: 100;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border: 1px solid #ff00ff;
+        border-radius: 5px;
       }
 
       .life {
@@ -753,6 +761,7 @@
         document.getElementById("game-setup").style.display = "none";
         document.querySelector(".game-area").style.display = "block";
         document.getElementById("word-input").style.display = "block";
+        document.getElementById("word-input").focus();
 
         // Start the game
         initGame();
@@ -764,20 +773,24 @@
         lives = 3;
         wordsTyped = 0;
         fallingObjects = [];
+        spawnCount = 0;
         gameStartTime = Date.now();
+
+        // Clear UI
         document.getElementById("score").textContent = "0";
         document.getElementById("wpm").textContent = "0";
         document.getElementById("words-container").innerHTML = "";
         document.getElementById("word-input").value = "";
-        document.getElementById("word-input").focus();
         updateLives();
 
-        // Start game loop
+        // Clear any existing intervals
         if (gameInterval) {
           clearInterval(gameInterval);
         }
+
+        // Start game loop
         gameInterval = setInterval(updateGame, 50);
-        setTimeout(spawnObject, 1000);
+        spawnObject(); // Start spawning words
       }
 
       function spawnObject() {
@@ -791,7 +804,7 @@
         // Calculate random position that ensures word is fully visible
         const gameArea = document.querySelector(".game-area");
         const wordWidth = word.length * 15; // Approximate width based on font size
-        const maxX = gameArea.offsetWidth - wordWidth;
+        const maxX = gameArea.offsetWidth - wordWidth - 20; // Add padding
         const x = Math.random() * maxX;
 
         wordElement.style.left = x + "px";
@@ -806,28 +819,29 @@
           speed: 1 + Math.random() * 0.5, // Slightly reduced speed variation
         });
 
-        // Schedule next spawn
-        const spawnDelay = Math.max(2000 - spawnCount * 50, 800); // Adjusted timing
-        setTimeout(spawnObject, spawnDelay);
+        // Schedule next spawn with increasing frequency
+        const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
         spawnCount++;
+        setTimeout(spawnObject, spawnDelay);
       }
 
       function updateGame() {
         const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight - 60; // Account for input area
+        const maxY = gameArea.offsetHeight - 100; // Account for input area and padding
 
         // Update positions
-        fallingObjects.forEach((obj, index) => {
+        for (let i = fallingObjects.length - 1; i >= 0; i--) {
+          const obj = fallingObjects[i];
           obj.y += obj.speed;
           obj.element.style.top = obj.y + "px";
 
           // Remove if passed bottom
           if (obj.y > maxY) {
             obj.element.remove();
-            fallingObjects.splice(index, 1);
-            loseLife(); // Lose a life when word reaches bottom
+            fallingObjects.splice(i, 1);
+            loseLife();
           }
-        });
+        }
 
         // Update WPM
         if (wordsTyped > 0) {
@@ -837,20 +851,23 @@
         }
       }
 
+      // Update word input handler
       document.getElementById("word-input").addEventListener("input", (e) => {
         const input = e.target.value.trim().toLowerCase();
 
-        fallingObjects.forEach((obj, index) => {
+        for (let i = fallingObjects.length - 1; i >= 0; i--) {
+          const obj = fallingObjects[i];
           if (input === obj.word.toLowerCase()) {
             // Remove word and update score
             obj.element.remove();
-            fallingObjects.splice(index, 1);
+            fallingObjects.splice(i, 1);
             score += obj.word.length;
             wordsTyped++;
             document.getElementById("score").textContent = score.toString();
             e.target.value = "";
+            break; // Only remove one word at a time
           }
-        });
+        }
       });
 
       // Reset game setup when showing game screen
@@ -1130,29 +1147,6 @@
         );
         if (guestButton) {
           guestButton.style.display = isLoggedIn ? "none" : "block";
-        }
-      }
-
-      // Update checkAuth to use updateAuthUI
-      async function checkAuth() {
-        try {
-          const {
-            data: { user },
-            error,
-          } = await supabase.auth.getUser();
-          if (error) throw error;
-
-          if (user) {
-            currentUser = user;
-            updateAuthUI(true);
-            await loadProfileStats();
-            await checkGamingName();
-          } else {
-            updateAuthUI(false);
-          }
-        } catch (error) {
-          console.error("Error checking auth:", error);
-          updateAuthUI(false);
         }
       }
 
