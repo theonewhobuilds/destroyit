@@ -607,11 +607,9 @@
             .select(
               `
               id,
-              user_id,
-              username,
               score,
               wpm,
-              profiles (
+              profiles:profile_id (
                 gaming_name
               )
             `
@@ -630,7 +628,7 @@
           leaderboardContent.innerHTML = "";
 
           scores.forEach((score, index) => {
-            const displayName = score.profiles?.gaming_name || score.username;
+            const displayName = score.profiles?.gaming_name || "Guest";
             const item = document.createElement("div");
             item.className = "leaderboard-item";
             item.innerHTML = `
