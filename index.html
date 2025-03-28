@@ -784,7 +784,14 @@
 
       function startGameLoop() {
         console.log("Starting game loop");
-        gameInterval = requestAnimationFrame(updateGame);
+        // Start animation frame and ensure it continues
+        function animate() {
+          updateGame();
+          if (lives > 0) {
+            gameInterval = requestAnimationFrame(animate);
+          }
+        }
+        gameInterval = requestAnimationFrame(animate);
       }
 
       function updateGame() {
@@ -792,26 +799,19 @@
         const gameArea = document.querySelector(".game-area");
         const maxY = gameArea.offsetHeight - 100;
 
-        // Log the number of words for debugging
-        console.log(`Updating ${fallingObjects.length} falling words`);
-
         // Loop through words in reverse order so we can safely remove while iterating
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
 
-          // Update position
+          // Update position with more movement
           obj.y += obj.speed;
 
-          // Apply position - directly manipulate the style
+          // Force update DOM element position
           if (obj.element && obj.element.style) {
-            obj.element.style.top = obj.y + "px";
-
-            // Debug first word
-            if (i === 0) {
-              console.log(
-                `Word ${obj.word}: Y=${obj.y}, Speed=${obj.speed}, StyleTop=${obj.element.style.top}`
-              );
-            }
+            // Apply direct styling with px units
+            obj.element.style.cssText += `top: ${Math.round(
+              obj.y
+            )}px !important;`;
 
             // Check if word hit bottom
             if (obj.y > maxY) {
@@ -821,7 +821,6 @@
             }
           } else {
             // Element no longer exists
-            console.log("Word element is missing!");
             fallingObjects.splice(i, 1);
           }
         }
@@ -831,11 +830,6 @@
           const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60;
           const wpm = Math.round(wordsTyped / timeElapsed);
           document.getElementById("wpm").textContent = wpm.toString();
-        }
-
-        // Continue game loop
-        if (lives > 0) {
-          gameInterval = requestAnimationFrame(updateGame);
         }
       }
 
