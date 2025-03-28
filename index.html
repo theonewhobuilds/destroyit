@@ -728,19 +728,54 @@
 
         if (currentUser) {
           try {
-            const { error } = await supabase.from("profiles").upsert({
-              id: currentUser.id,
-              gaming_name: gamingName,
-              email: currentUser.email,
-              updated_at: new Date().toISOString(),
-            });
+            // First check if the gaming name is already taken
+            const { data: existingUser, error: checkError } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("gaming_name", gamingName)
+              .neq("id", currentUser.id)
+              .single();
 
-            if (error) throw error;
+            if (checkError && checkError.code !== "PGRST116") {
+              console.error("Error checking gaming name:", checkError);
+              alert(
+                "Error checking gaming name availability. Please try again."
+              );
+              return;
+            }
+
+            if (existingUser) {
+              alert(
+                "This gaming name is already taken. Please choose another one."
+              );
+              return;
+            }
+
+            const { error: upsertError } = await supabase
+              .from("profiles")
+              .upsert(
+                {
+                  id: currentUser.id,
+                  gaming_name: gamingName,
+                  email: currentUser.email,
+                  updated_at: new Date().toISOString(),
+                },
+                {
+                  onConflict: "id",
+                }
+              );
+
+            if (upsertError) {
+              console.error("Error updating gaming name:", upsertError);
+              alert("Error updating gaming name. Please try again.");
+              return;
+            }
+
             currentGamingName = gamingName;
             document.getElementById("current-gaming-name").textContent =
               gamingName;
           } catch (error) {
-            console.error("Error updating gaming name:", error);
+            console.error("Error in gaming name update:", error);
             alert("Error updating gaming name. Please try again.");
             return;
           }
