@@ -824,17 +824,31 @@
 
       // Reset game setup when showing game screen
       function showGameScreen() {
-        document.getElementById("game-setup").style.display = "flex";
-        document.querySelector(".game-area").style.display = "none";
-        document.getElementById("word-input").style.display = "none";
-        document.getElementById("gaming-name-input").value = "";
+        if (
+          currentGamingName ||
+          (isGuest && localStorage.getItem("guestGamingName"))
+        ) {
+          // If we already have a gaming name, start the game directly
+          document.getElementById("game-setup").style.display = "none";
+          document.querySelector(".game-area").style.display = "block";
+          document.getElementById("word-input").style.display = "block";
+          document.getElementById("player-name").textContent =
+            currentGamingName || localStorage.getItem("guestGamingName");
+          showScreen("game-screen");
+          initGame();
+        } else {
+          // Only show name input if we don't have a gaming name
+          document.getElementById("game-setup").style.display = "flex";
+          document.querySelector(".game-area").style.display = "none";
+          document.getElementById("word-input").style.display = "none";
+          document.getElementById("gaming-name-input").value = "";
+          showScreen("game-screen");
+        }
 
         if (gameInterval) {
           clearInterval(gameInterval);
           gameInterval = null;
         }
-
-        showScreen("game-screen");
       }
 
       // Add missing fetchLeaderboard function
@@ -1105,15 +1119,24 @@
           modal.classList.add("active");
         } else {
           currentGamingName = profile.gaming_name;
-          showScreen("game-screen");
+          showGameScreen();
         }
       }
 
+      // Update playAsGuest function
       function playAsGuest() {
         isGuest = true;
-        const modal = document.getElementById("gaming-name-modal");
-        modal.dataset.isProfileUpdate = "false";
-        modal.classList.add("active");
+        const guestName = localStorage.getItem("guestGamingName");
+        if (guestName) {
+          // If guest already has a name, start game directly
+          currentGamingName = guestName;
+          showGameScreen();
+        } else {
+          // Only show modal if guest doesn't have a name
+          const modal = document.getElementById("gaming-name-modal");
+          modal.dataset.isProfileUpdate = "false";
+          modal.classList.add("active");
+        }
       }
 
       // Submit gaming name
