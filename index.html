@@ -343,14 +343,30 @@
       }
 
       .close-btn {
+        position: absolute;
+        padding: 10px 20px;
+        background: none;
+        border: 2px solid #ff00ff;
+        color: #ff00ff;
+        font-size: 1.2em;
+        cursor: pointer;
+        transition: all 0.3s;
+        z-index: 1000;
         top: 20px;
         right: 20px;
+      }
+
+      /* Special positioning for game screen close button */
+      .game-close-btn {
+        top: 10px;
+        right: 10px;
+        z-index: 2000; /* Higher z-index to appear above all game elements */
       }
 
       .lives {
         position: absolute;
         top: 20px;
-        right: 20px;
+        right: 90px;
         display: flex;
         gap: 10px;
         background: rgba(0, 0, 0, 0.7);
@@ -554,7 +570,12 @@
       </div>
 
       <div id="game-screen" class="screen">
-        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
+        <button
+          class="close-btn game-close-btn"
+          onclick="showScreen('home-screen')"
+        >
+          ✕
+        </button>
         <div class="game-container">
           <div class="game-area">
             <div class="stats">
@@ -618,7 +639,7 @@
       let lives = 3;
       let wordsTyped = 0;
       let fallingObjects = [];
-      let spawnCount = 3;
+      let spawnCount = 2;
 
       // Initialize game
       function initGame() {
@@ -1088,10 +1109,34 @@
           "VIRUS",
           "SYSTEM",
         ];
+
+        // Check existing positions of objects to avoid overlap
+        const existingPositions = fallingObjects.map((obj) =>
+          parseInt(obj.element.style.left)
+        );
+
         const word = words[Math.floor(Math.random() * words.length)];
         const gameArea = document.querySelector(".game-area");
         const areaWidth = gameArea.offsetWidth;
-        const x = Math.random() * (areaWidth - 100);
+
+        // Try to find a position that doesn't overlap with existing objects
+        let x;
+        let attempts = 0;
+        const objectWidth = 100; // Approximate width of object
+        const minDistance = 120; // Minimum distance between objects
+
+        do {
+          x = Math.random() * (areaWidth - objectWidth);
+          attempts++;
+
+          // Break after several attempts to prevent infinite loop
+          if (attempts > 10) break;
+
+          // Check if this position is far enough from existing objects
+        } while (
+          existingPositions.some((pos) => Math.abs(pos - x) < minDistance) &&
+          attempts < 10
+        );
 
         const element = document.createElement("div");
         element.className = "falling-object";
