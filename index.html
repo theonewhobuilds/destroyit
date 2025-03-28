@@ -776,7 +776,27 @@
                 data: { user },
                 error,
               } = await supabase.auth.getUser();
-              if (error) throw error;
+
+              // If we get an error about missing sub claim, it just means no user is logged in
+              // This is expected behavior for new/guest users, so don't treat it as an error
+              if (
+                error &&
+                error.message &&
+                error.message.includes("missing sub claim")
+              ) {
+                // User is not logged in, which is normal - show login options
+                currentUser = null;
+                document.getElementById("login-btn").style.display = "block";
+                document.getElementById("profile-btn").style.display = "none";
+                document.getElementById("logout-btn").style.display = "none";
+                document.querySelector(
+                  'button[onclick="playAsGuest()"]'
+                ).style.display = "block";
+                return;
+              } else if (error) {
+                // For other types of errors, we should still log them
+                throw error;
+              }
 
               if (user) {
                 currentUser = user;
