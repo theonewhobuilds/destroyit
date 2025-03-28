@@ -492,35 +492,18 @@
   <body>
     <!-- Add Supabase JS library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-    <!-- Add environment configuration with version to bust cache -->
-    <script src="/env-config.js?v=3"></script>
-    <!-- Add checker for environment variables -->
+    <!-- Direct initialization with hardcoded credentials -->
     <script>
-      // Check if environment variables are properly loaded
-      (function checkEnvVars() {
-        console.log("Checking environment variables...");
-        if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-          console.error("Supabase configuration missing or invalid:", {
-            url: window.SUPABASE_URL,
-            key: window.SUPABASE_ANON_KEY
-              ? "exists but may be invalid"
-              : "missing",
-          });
-        } else {
-          console.log("Environment variables loaded successfully");
-        }
-      })();
-
-      // FALLBACK: Direct URL to ensure application works even if middleware fails
-      // This URL is public anyway, so hardcoding is not a security risk
-      const FALLBACK_SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
-      // Also hardcode the anon key as fallback
-      const FALLBACK_SUPABASE_KEY =
+      // Hardcoded Supabase credentials - these are public anyway
+      const SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
+      const SUPABASE_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb251cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDM5NjgsImV4cCI6MjAyMjkxOTk2OH0.7puLpOsSlPIWn6OhMd-wLxtlGhXFTZdmwWhNazjVvzk";
 
-      // Force the values to always use our hardcoded fallbacks
-      window.SUPABASE_URL = FALLBACK_SUPABASE_URL;
-      window.SUPABASE_ANON_KEY = FALLBACK_SUPABASE_KEY;
+      // Set values in window for the rest of the application to use
+      window.SUPABASE_URL = SUPABASE_URL;
+      window.SUPABASE_ANON_KEY = SUPABASE_KEY;
+
+      console.log("Using hardcoded Supabase credentials");
     </script>
     <div class="container">
       <div id="home-screen" class="screen active">
@@ -661,14 +644,8 @@
       // Wait until DOM is loaded to initialize
       document.addEventListener("DOMContentLoaded", function () {
         try {
-          // Use middleware-provided URL or fallback to hardcoded one
-          let supabaseUrl = window.SUPABASE_URL || FALLBACK_SUPABASE_URL;
-
-          // We still need the anon key from middleware
-          if (!window.SUPABASE_ANON_KEY) {
-            console.error("Missing Supabase Anon Key - cannot initialize");
-            return;
-          }
+          // Use the hardcoded Supabase credentials
+          let supabaseUrl = window.SUPABASE_URL;
 
           // Ensure URL has a protocol
           if (
@@ -677,13 +654,6 @@
           ) {
             supabaseUrl = "https://" + supabaseUrl;
           }
-
-          // Log URL information for debugging
-          console.log("Using Supabase URL:", {
-            url: supabaseUrl,
-            source: window.SUPABASE_URL ? "middleware" : "fallback",
-            valid: typeof supabaseUrl === "string" && supabaseUrl.length > 0,
-          });
 
           // Initialize Supabase client with the validated URL
           supabase = window.supabase.createClient(
