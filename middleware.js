@@ -1,8 +1,8 @@
-// Remove Next.js dependency 
+// Remove Next.js dependency
 export async function middleware(request) {
   try {
     // Check if the environment variables exist
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl = "https://ikbnuqabgdgikorhipnm.supabase.co";
     const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
     // Log detailed information about what we're receiving
