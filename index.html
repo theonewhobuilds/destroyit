@@ -654,35 +654,18 @@
       // Wait until DOM is loaded to initialize
       document.addEventListener("DOMContentLoaded", function () {
         try {
-          // Use middleware-provided URL or fallback to hardcoded one
-          let supabaseUrl = window.SUPABASE_URL || FALLBACK_SUPABASE_URL;
+          // HARDCODED VALUES - Completely bypass middleware
+          // These are public values meant for client-side use
+          const hardcodedUrl = "https://ikbnuqabgdgikorhipnm.supabase.co";
+          const hardcodedKey =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrwm51cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDEwMTYzMTIsImV4cCI6MjAx2Y1NzYzMTJ9.G7n1oadL6IFfJTd3dw14g5v60uXYAwnO2Q8xd3WqBgQ";
 
-          // We still need the anon key from middleware
-          if (!window.SUPABASE_ANON_KEY) {
-            console.error("Missing Supabase Anon Key - cannot initialize");
-            return;
-          }
-
-          // Ensure URL has a protocol
-          if (
-            !supabaseUrl.startsWith("http://") &&
-            !supabaseUrl.startsWith("https://")
-          ) {
-            supabaseUrl = "https://" + supabaseUrl;
-          }
-
-          // Log URL information for debugging
-          console.log("Using Supabase URL:", {
-            url: supabaseUrl,
-            source: window.SUPABASE_URL ? "middleware" : "fallback",
-            valid: typeof supabaseUrl === "string" && supabaseUrl.length > 0,
-          });
-
-          // Initialize Supabase client with the validated URL
-          supabase = window.supabase.createClient(
-            supabaseUrl,
-            window.SUPABASE_ANON_KEY
+          console.log(
+            "Using hardcoded Supabase credentials to bypass middleware issues"
           );
+
+          // Initialize Supabase client with hardcoded values
+          supabase = window.supabase.createClient(hardcodedUrl, hardcodedKey);
 
           // Initialize state variables
           let currentUser = null;
