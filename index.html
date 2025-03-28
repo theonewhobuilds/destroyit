@@ -73,7 +73,7 @@
 
       .words-container {
         flex: 1;
-        position: relative;
+        position: relative !important;
         width: 100%;
         height: calc(100% - 80px);
         overflow: hidden;
@@ -106,7 +106,7 @@
       }
 
       .falling-word {
-        position: absolute;
+        position: absolute !important;
         color: #00ffff;
         font-family: "Courier New", monospace;
         font-size: 1.4em;
@@ -118,7 +118,7 @@
         border-radius: 3px;
         z-index: 1;
         transform: translateZ(0); /* Enable hardware acceleration */
-        will-change: transform, top; /* Optimize animations */
+        will-change: top; /* Optimize animations */
       }
 
       .gaming-name-input {
@@ -758,7 +758,15 @@
         // Clear UI
         document.getElementById("score").textContent = "0";
         document.getElementById("wpm").textContent = "0";
-        document.getElementById("words-container").innerHTML = "";
+
+        // Reset and prepare words container
+        const wordsContainer = document.getElementById("words-container");
+        wordsContainer.innerHTML = "";
+        wordsContainer.style.position = "relative";
+        wordsContainer.style.width = "100%";
+        wordsContainer.style.height = "calc(100% - 80px)";
+        wordsContainer.style.overflow = "hidden";
+
         document.getElementById("word-input").value = "";
         updateLives();
 
@@ -786,14 +794,18 @@
         // Update positions of all falling words
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
+
           // Increase y position based on speed
           obj.y += obj.speed;
-          // Apply the new position
-          obj.element.style.top = `${obj.y}px`;
+
+          // Apply the new position with forced px units
+          obj.element.style.top = `${Math.round(obj.y)}px`;
 
           // Log movement for debugging (first word only)
           if (i === 0 && fallingObjects.length > 0) {
-            console.log(`Word: ${obj.word}, Y: ${obj.y}, Speed: ${obj.speed}`);
+            console.log(
+              `Word: ${obj.word}, Y: ${obj.y}, Speed: ${obj.speed}, Style.top: ${obj.element.style.top}`
+            );
           }
 
           // Remove if passed bottom
@@ -834,23 +846,30 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20; // Add padding
         const x = Math.random() * maxX;
 
+        // Force absolute positioning and set initial coordinates
+        wordElement.style.position = "absolute";
         wordElement.style.left = `${x}px`;
         wordElement.style.top = "0px";
 
-        // Add explicit top and left positioning
-        wordElement.style.position = "absolute";
-
+        // First add to DOM
         document.getElementById("words-container").appendChild(wordElement);
 
+        // Log creation
         console.log(`Created word: ${word} at position x:${x}, y:0`);
 
         // Create falling object with higher speed
-        fallingObjects.push({
+        const newObj = {
           element: wordElement,
           word: word,
           y: 0,
           speed: 3 + Math.random() * 2, // Increased speed for better visibility
-        });
+        };
+
+        fallingObjects.push(newObj);
+
+        // Force an initial position update
+        newObj.y += newObj.speed;
+        newObj.element.style.top = `${newObj.y}px`;
 
         // Schedule next spawn with increasing frequency
         const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
