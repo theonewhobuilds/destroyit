@@ -572,16 +572,154 @@
     </div>
 
     <script>
-      // Initialize Supabase client
-      // Updated with gaming name and profile features
-      // Forcing new deployment - Updated for Vercel
-      const supabaseUrl = window.SUPABASE_URL;
-      const supabaseKey = window.SUPABASE_ANON_KEY;
-      const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+      // Initialize Supabase client first, before any other code
+      const supabase = window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_ANON_KEY
+      );
 
+      // Initialize state variables
       let currentUser = null;
       let currentGamingName = null;
       let isGuest = false;
+      let gameInterval = null;
+      let gameStartTime = null;
+
+      // Add missing fetchLeaderboard function
+      async function fetchLeaderboard() {
+        try {
+          const leaderboardDiv = document.getElementById("leaderboard");
+          leaderboardDiv.innerHTML = `
+            <div class="leaderboard-container">
+              <h2 class="leaderboard-title">CYBERPUNK LEADERBOARD</h2>
+              <div class="leaderboard-header">
+                <div>Rank</div>
+                <div>Player</div>
+                <div>Score</div>
+                <div>WPM</div>
+              </div>
+              <div id="leaderboard-content"></div>
+            </div>
+          `;
+
+          const { data: scores, error } = await supabase
+            .from("scores")
+            .select(
+              `
+              id,
+              user_id,
+              username,
+              score,
+              wpm,
+              profiles (
+                gaming_name
+              )
+            `
+            )
+            .order("score", { ascending: false })
+            .limit(10);
+
+          if (error) {
+            console.error("Error fetching leaderboard:", error);
+            return;
+          }
+
+          const leaderboardContent = document.getElementById(
+            "leaderboard-content"
+          );
+          leaderboardContent.innerHTML = "";
+
+          scores.forEach((score, index) => {
+            const displayName = score.profiles?.gaming_name || score.username;
+            const item = document.createElement("div");
+            item.className = "leaderboard-item";
+            item.innerHTML = `
+              <div class="rank">#${index + 1}</div>
+              <div class="username">${displayName}</div>
+              <div class="score">${score.score}</div>
+              <div class="wpm">${score.wpm}</div>
+            `;
+            leaderboardContent.appendChild(item);
+          });
+        } catch (error) {
+          console.error("Error in fetchLeaderboard:", error);
+        }
+      }
+
+      // Add missing checkAuth function
+      async function checkAuth() {
+        try {
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (error) throw error;
+
+          if (user) {
+            currentUser = user;
+            document.getElementById("login-btn").style.display = "none";
+            document.getElementById("profile-btn").style.display = "block";
+            document.getElementById("logout-btn").style.display = "block";
+            await checkGamingName();
+          }
+        } catch (error) {
+          console.error("Error checking auth:", error);
+        }
+      }
+
+      // Add missing updateScore function
+      function updateScore() {
+        document.getElementById("score").textContent = score;
+
+        // Calculate and update WPM
+        const gameTimeInMinutes = (Date.now() - gameStartTime) / 60000;
+        const currentWpm = Math.round(wordsTyped / gameTimeInMinutes);
+        document.getElementById("wpm").textContent = currentWpm;
+      }
+
+      // Add missing gainLife function
+      function gainLife() {
+        if (lives < 3) {
+          lives++;
+          updateLives();
+        }
+      }
+
+      // Add missing loseLife function
+      function loseLife() {
+        lives--;
+        updateLives();
+        if (lives <= 0) {
+          gameOver();
+        }
+      }
+
+      // Add missing checkAndSpawnObjects function
+      function checkAndSpawnObjects() {
+        if (fallingObjects.length < spawnCount) {
+          spawnObject();
+        }
+      }
+
+      // Save score
+      async function saveScore(score, wpm) {
+        try {
+          const scoreData = {
+            user_id: currentUser?.id,
+            username: currentGamingName, // Use gaming name for both guests and logged-in users
+            score: score,
+            wpm: wpm,
+          };
+
+          const { error } = await supabase.from("scores").insert([scoreData]);
+
+          if (error) throw error;
+
+          fetchLeaderboard(); // Changed from updateLeaderboard to fetchLeaderboard
+        } catch (error) {
+          console.error("Error saving score:", error);
+        }
+      }
 
       // Check initial auth state
       supabase.auth.onAuthStateChange((event, session) => {
@@ -734,69 +872,6 @@
 
         if (!isProfileUpdate) {
           showScreen("game-screen");
-        }
-      }
-
-      // Update leaderboard
-      async function updateLeaderboard() {
-        const { data: scores, error } = await supabase
-          .from("scores")
-          .select(
-            `
-            id,
-            user_id,
-            username,
-            score,
-            wpm,
-            profiles (
-              gaming_name
-            )
-          `
-          )
-          .order("score", { ascending: false })
-          .limit(10);
-
-        if (error) {
-          console.error("Error fetching leaderboard:", error);
-          return;
-        }
-
-        const leaderboardContent = document.getElementById(
-          "leaderboard-content"
-        );
-        leaderboardContent.innerHTML = "";
-
-        scores.forEach((score, index) => {
-          const displayName = score.profiles?.gaming_name || score.username;
-          const item = document.createElement("div");
-          item.className = "leaderboard-item";
-          item.innerHTML = `
-            <div class="rank">#${index + 1}</div>
-            <div class="username">${displayName}</div>
-            <div class="score">${score.score}</div>
-            <div class="wpm">${score.wpm}</div>
-          `;
-          leaderboardContent.appendChild(item);
-        });
-      }
-
-      // Save score
-      async function saveScore(score, wpm) {
-        try {
-          const scoreData = {
-            user_id: currentUser?.id,
-            username: currentGamingName, // Use gaming name for both guests and logged-in users
-            score: score,
-            wpm: wpm,
-          };
-
-          const { error } = await supabase.from("scores").insert([scoreData]);
-
-          if (error) throw error;
-
-          updateLeaderboard();
-        } catch (error) {
-          console.error("Error saving score:", error);
         }
       }
 
