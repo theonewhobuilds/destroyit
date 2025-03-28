@@ -649,15 +649,34 @@
 
       // Initialize game
       function initGame() {
+        // Clear any existing game elements
+        clearGameElements();
+
+        // Reset game variables
         score = 0;
         lives = 3;
         wordsTyped = 0;
         fallingObjects = [];
         gameStartTime = Date.now();
+
+        // Update UI
         updateScore();
         updateLives();
         document.getElementById("player-name").textContent =
           currentGamingName || "Guest";
+      }
+
+      // New function to clear all game elements
+      function clearGameElements() {
+        // Remove all falling objects from the DOM
+        const gameArea = document.querySelector(".game-area");
+        const fallingElements = gameArea.querySelectorAll(".falling-object");
+        fallingElements.forEach((element) => {
+          element.remove();
+        });
+
+        // Clear word input
+        document.getElementById("word-input").value = "";
       }
 
       // Add missing fetchLeaderboard function
@@ -1207,12 +1226,18 @@
       // Game over
       async function gameOver() {
         clearInterval(gameInterval);
+        gameInterval = null;
+
+        // Calculate final stats
         const finalWpm = Math.round(
-          wordsTyped / ((Date.now() - gameStartTime) / 60000)
+          wordsTyped / ((Date.now() - gameStartTime) / 60000 || 1) // Avoid division by zero
         );
 
         document.getElementById("final-score").textContent = score;
         document.getElementById("typing-speed").textContent = finalWpm;
+
+        // Clear any remaining game elements
+        clearGameElements();
 
         if (currentUser || isGuest) {
           await saveScore(score, finalWpm);
