@@ -647,17 +647,39 @@
       // Wait for environment variables to be loaded before initializing Supabase
       function initSupabase() {
         if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-          // Initialize Supabase client
-          const supabase = window.supabase.createClient(
-            window.SUPABASE_URL,
-            window.SUPABASE_ANON_KEY
-          );
+          try {
+            // Validate URL format
+            let supabaseUrl = window.SUPABASE_URL;
 
-          // Make supabase available globally
-          window.supabaseClient = supabase;
+            // Ensure URL has a protocol
+            if (
+              !supabaseUrl.startsWith("http://") &&
+              !supabaseUrl.startsWith("https://")
+            ) {
+              supabaseUrl = "https://" + supabaseUrl;
+            }
 
-          console.log("Supabase initialized successfully");
-          initApp(); // Start the application after Supabase is initialized
+            // Test if it can construct a valid URL
+            new URL(supabaseUrl);
+
+            // Initialize Supabase client with the validated URL
+            const supabase = window.supabase.createClient(
+              supabaseUrl,
+              window.SUPABASE_ANON_KEY
+            );
+
+            // Make supabase available globally
+            window.supabaseClient = supabase;
+
+            console.log("Supabase initialized successfully");
+            initApp(); // Start the application after Supabase is initialized
+          } catch (error) {
+            console.error("Error initializing Supabase client:", error);
+            console.error("Invalid Supabase URL format:", window.SUPABASE_URL);
+            console.error("Please check your environment variables in Vercel");
+            // Retry after a short delay
+            setTimeout(initSupabase, 1000);
+          }
         } else {
           console.error("Supabase configuration missing. Retrying in 500ms...");
           setTimeout(initSupabase, 500);
