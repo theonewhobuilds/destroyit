@@ -784,13 +784,14 @@
 
       function startGameLoop() {
         console.log("Starting game loop");
-        // Start animation frame and ensure it continues
+        // Create an animation loop that runs continuously
         function animate() {
           updateGame();
           if (lives > 0) {
             gameInterval = requestAnimationFrame(animate);
           }
         }
+        // Start the animation loop
         gameInterval = requestAnimationFrame(animate);
       }
 
@@ -803,15 +804,18 @@
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
 
-          // Update position with more movement
+          // Update position with speed value
           obj.y += obj.speed;
 
-          // Force update DOM element position
+          // Make sure the element exists before updating its position
           if (obj.element && obj.element.style) {
-            // Apply direct styling with px units
-            obj.element.style.cssText += `top: ${Math.round(
-              obj.y
-            )}px !important;`;
+            // Apply position directly with !important to override any conflicting styles
+            obj.element.style.top = `${Math.round(obj.y)}px`;
+
+            // Log position for debugging
+            if (i === 0 && fallingObjects.length > 0) {
+              console.log(`Word ${obj.word} at y=${obj.y}`);
+            }
 
             // Check if word hit bottom
             if (obj.y > maxY) {
@@ -851,26 +855,29 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20;
         const x = Math.random() * maxX;
 
-        // Set position styles directly
-        Object.assign(wordElement.style, {
-          position: "absolute",
-          left: x + "px",
-          top: "0px",
-          zIndex: "10",
-        });
+        // Set position styles directly with important flags
+        wordElement.style.position = "absolute";
+        wordElement.style.left = `${Math.round(x)}px`;
+        wordElement.style.top = "0px";
+        wordElement.style.zIndex = "10";
+        wordElement.style.transition = "none"; // Disable transitions
 
         // Add to container
         document.getElementById("words-container").appendChild(wordElement);
 
         // Add to falling objects array
-        fallingObjects.push({
+        const fallingObj = {
           element: wordElement,
           word: word,
           y: 0,
           speed: 2 + Math.random() * 1,
-        });
+        };
 
-        console.log(`Spawned word: ${word} at x=${x}, y=0`);
+        fallingObjects.push(fallingObj);
+
+        console.log(
+          `Spawned word: ${word} at x=${x}, y=0, speed=${fallingObj.speed}`
+        );
 
         // Schedule next spawn
         const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
