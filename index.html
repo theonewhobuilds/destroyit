@@ -785,20 +785,56 @@
         document.getElementById("word-input").value = "";
         updateLives();
 
-        // Clear any existing intervals
+        // Clear any existing game state
         if (gameInterval) {
-          clearInterval(gameInterval);
+          cancelAnimationFrame(gameInterval);
           gameInterval = null;
         }
 
         // Start game loop using requestAnimationFrame
-        gameInterval = true;
-        requestAnimationFrame(updateGame);
-        spawnObject(); // Start spawning words
+        startGameLoop();
+        // Schedule first word spawn
+        setTimeout(spawnObject, 1000);
+      }
+
+      function startGameLoop() {
+        gameInterval = requestAnimationFrame(updateGame);
+      }
+
+      function updateGame() {
+        const gameArea = document.querySelector(".game-area");
+        const maxY = gameArea.offsetHeight - 100; // Account for input area and padding
+
+        // Update positions of all falling words
+        for (let i = fallingObjects.length - 1; i >= 0; i--) {
+          const obj = fallingObjects[i];
+          obj.y += obj.speed;
+          obj.element.style.top = `${obj.y}px`;
+
+          // Remove if passed bottom
+          if (obj.y > maxY) {
+            obj.element.remove();
+            fallingObjects.splice(i, 1);
+            loseLife();
+          }
+        }
+
+        // Update WPM
+        if (wordsTyped > 0) {
+          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60; // in minutes
+          const wpm = Math.round(wordsTyped / timeElapsed);
+          document.getElementById("wpm").textContent = wpm.toString();
+        }
+
+        // Continue the game loop
+        if (lives > 0) {
+          gameInterval = requestAnimationFrame(updateGame);
+        }
       }
 
       function spawnObject() {
-        if (!gameInterval) return;
+        // Don't spawn if game is over
+        if (lives <= 0) return;
 
         const word = words[Math.floor(Math.random() * words.length)];
         const wordElement = document.createElement("div");
@@ -820,53 +856,45 @@
           element: wordElement,
           word: word,
           y: 0,
-          speed: 2 + Math.random() * 1, // Increased base speed and variation
+          speed: 2 + Math.random() * 1.5, // Increased speed
         });
 
         // Schedule next spawn with increasing frequency
         const spawnDelay = Math.max(2000 - spawnCount * 50, 800);
         spawnCount++;
-        if (gameInterval) {
+
+        // Only schedule next spawn if game is still active
+        if (lives > 0) {
           setTimeout(spawnObject, spawnDelay);
         }
       }
 
-      function updateGame() {
-        if (!gameInterval) return;
-
-        const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight - 100; // Account for input area and padding
-
-        // Update positions
-        for (let i = fallingObjects.length - 1; i >= 0; i--) {
-          const obj = fallingObjects[i];
-          obj.y += obj.speed;
-          obj.element.style.top = `${obj.y}px`;
-
-          // Remove if passed bottom
-          if (obj.y > maxY) {
-            obj.element.remove();
-            fallingObjects.splice(i, 1);
-            loseLife();
-          }
-        }
-
-        // Update WPM
-        if (wordsTyped > 0) {
-          const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60; // in minutes
-          const wpm = Math.round(wordsTyped / timeElapsed);
-          document.getElementById("wpm").textContent = wpm.toString();
-        }
-
-        // Request next frame
+      function gameOver() {
+        // Cancel animation frame
         if (gameInterval) {
-          requestAnimationFrame(updateGame);
+          cancelAnimationFrame(gameInterval);
+          gameInterval = null;
         }
+
+        const finalWpm = Math.round(
+          wordsTyped / ((Date.now() - gameStartTime) / 60000)
+        );
+
+        document.getElementById("final-score").textContent = score;
+        document.getElementById("typing-speed").textContent = finalWpm;
+
+        if (currentUser) {
+          saveScore(score, finalWpm);
+        }
+
+        showScreen("end-screen");
       }
 
-      // Update word input handler
+      // Update word input handler for better responsiveness
       document.getElementById("word-input").addEventListener("input", (e) => {
         const input = e.target.value.trim().toLowerCase();
+
+        if (!input) return;
 
         for (let i = fallingObjects.length - 1; i >= 0; i--) {
           const obj = fallingObjects[i];
@@ -907,7 +935,7 @@
         }
 
         if (gameInterval) {
-          clearInterval(gameInterval);
+          cancelAnimationFrame(gameInterval);
           gameInterval = null;
         }
       }
@@ -1328,23 +1356,6 @@
         }
       }
 
-      // Game over
-      async function gameOver() {
-        gameInterval = null; // Stop the game loop
-        const finalWpm = Math.round(
-          wordsTyped / ((Date.now() - gameStartTime) / 60000)
-        );
-
-        document.getElementById("final-score").textContent = score;
-        document.getElementById("typing-speed").textContent = finalWpm;
-
-        if (currentUser || isGuest) {
-          saveScore(score, finalWpm);
-        }
-
-        showScreen("end-screen");
-      }
-
       // Restart game
       function restartGame() {
         showScreen("game-screen");
@@ -1368,7 +1379,7 @@
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           if (gameInterval) {
-            clearInterval(gameInterval);
+            cancelAnimationFrame(gameInterval);
             showScreen("home-screen");
           }
         }
