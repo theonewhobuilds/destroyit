@@ -1,4 +1,4 @@
-// Remove Next.js dependency
+// Remove Next.js dependency 
 export async function middleware(request) {
   try {
     // Check if the environment variables exist
@@ -43,7 +43,7 @@ export async function middleware(request) {
     }
 
     // Return both values but with clear source identification
-    const envConfig = `
+    const envConfig = `  
       window.SUPABASE_URL = "${supabaseUrl}";
       window.SUPABASE_ANON_KEY = "${supabaseKey}";
       window.MIDDLEWARE_TIMESTAMP = "${new Date().toISOString()}";
@@ -59,7 +59,7 @@ export async function middleware(request) {
   } catch (error) {
     console.error("[MIDDLEWARE] Error:", error);
     return new Response(
-      'console.error("Middleware error: ' + error.message + '");',
+      `console.error("Middleware error: ${error.message}");`,
       {
         status: 500,
         headers: { "Content-Type": "application/javascript" },
@@ -69,5 +69,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: "/env-config.js",
+  matcher: "/env-config.js", // This defines the URL where the middleware is applied
 };
