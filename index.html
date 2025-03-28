@@ -34,19 +34,15 @@
       }
 
       .game-container {
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        border: 2px solid #00f7ff;
-        box-shadow: 0 0 20px #00f7ff;
-        overflow: hidden;
-        position: relative;
         margin-top: 60px;
         margin-bottom: 60px;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 20px;
+        width: 100%;
+        height: 100%;
+        position: relative;
       }
 
       .game-area {
@@ -56,6 +52,8 @@
         position: relative;
         overflow: hidden;
         background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
       }
 
       .game-stats {
@@ -66,18 +64,36 @@
         font-family: "Courier New", monospace;
         font-size: 1.2em;
         text-shadow: 0 0 10px #00ffff;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border: 1px solid #00ffff;
+        border-radius: 5px;
+      }
+
+      .words-container {
+        flex: 1;
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      .game-input-container {
+        width: 100%;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.9);
+        border-top: 2px solid #ff00ff;
+        position: relative;
       }
 
       .game-input {
         width: 100%;
-        max-width: 400px;
-        padding: 10px;
+        padding: 15px;
         background: rgba(0, 0, 0, 0.8);
         border: 2px solid #ff00ff;
         color: #ff00ff;
         font-size: 1.2em;
         text-align: center;
-        margin-top: 20px;
       }
 
       .game-input:focus {
@@ -89,9 +105,14 @@
         position: absolute;
         color: #00ffff;
         font-family: "Courier New", monospace;
-        font-size: 1.2em;
+        font-size: 1.4em;
         text-shadow: 0 0 10px #00ffff;
         white-space: nowrap;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 5px 10px;
+        border: 1px solid #00ffff;
+        border-radius: 3px;
+        z-index: 1;
       }
 
       .gaming-name-input {
@@ -628,14 +649,16 @@
               <div>WPM: <span id="wpm">0</span></div>
               <div>Player: <span id="player-name">-</span></div>
             </div>
-            <div id="words-container"></div>
-            <input
-              type="text"
-              class="game-input"
-              id="word-input"
-              placeholder="Type the words here..."
-              style="display: none"
-            />
+            <div id="words-container" class="words-container"></div>
+            <div class="game-input-container">
+              <input
+                type="text"
+                class="game-input"
+                id="word-input"
+                placeholder="Type the words here..."
+                autocomplete="off"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -757,13 +780,16 @@
         if (!gameInterval) return;
 
         const word = words[Math.floor(Math.random() * words.length)];
-        const x =
-          Math.random() *
-          (document.querySelector(".game-area").offsetWidth - 100);
-
         const wordElement = document.createElement("div");
         wordElement.className = "falling-word";
         wordElement.textContent = word;
+
+        // Calculate random position that ensures word is fully visible
+        const gameArea = document.querySelector(".game-area");
+        const wordWidth = word.length * 15; // Approximate width based on font size
+        const maxX = gameArea.offsetWidth - wordWidth;
+        const x = Math.random() * maxX;
+
         wordElement.style.left = x + "px";
         wordElement.style.top = "0px";
 
@@ -773,18 +799,18 @@
           element: wordElement,
           word: word,
           y: 0,
-          speed: 1 + Math.random(),
+          speed: 1 + Math.random() * 0.5, // Slightly reduced speed variation
         });
 
         // Schedule next spawn
-        const spawnDelay = Math.max(2000 - spawnCount * 100, 1000);
+        const spawnDelay = Math.max(2000 - spawnCount * 50, 800); // Adjusted timing
         setTimeout(spawnObject, spawnDelay);
         spawnCount++;
       }
 
       function updateGame() {
         const gameArea = document.querySelector(".game-area");
-        const maxY = gameArea.offsetHeight;
+        const maxY = gameArea.offsetHeight - 60; // Account for input area
 
         // Update positions
         fallingObjects.forEach((obj, index) => {
