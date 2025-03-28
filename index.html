@@ -41,6 +41,8 @@
         box-shadow: 0 0 20px #00f7ff;
         overflow: hidden;
         position: relative;
+        margin-top: 60px;
+        margin-bottom: 60px;
       }
 
       .game-area {
@@ -308,25 +310,35 @@
         justify-content: center;
       }
 
-      .back-btn {
-        position: relative;
-        margin-top: 40px;
-        padding: 20px 50px;
+      .back-btn,
+      .close-btn {
+        position: absolute;
+        padding: 10px 20px;
         background: none;
-        border: 3px solid #ff00ff;
+        border: 2px solid #ff00ff;
         color: #ff00ff;
-        font-size: 1.4em;
-        text-transform: uppercase;
-        letter-spacing: 3px;
+        font-size: 1.2em;
         cursor: pointer;
         transition: all 0.3s;
-        overflow: hidden;
+        z-index: 1000;
       }
 
-      .back-btn:hover {
+      .back-btn:hover,
+      .close-btn:hover {
         background: #ff00ff;
         color: #000;
-        box-shadow: 0 0 30px #ff00ff;
+        box-shadow: 0 0 20px #ff00ff;
+      }
+
+      .back-btn {
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .close-btn {
+        top: 20px;
+        right: 20px;
       }
 
       .lives {
@@ -372,6 +384,7 @@
         width: 90%;
         text-align: center;
         position: relative;
+        padding-top: 60px;
       }
 
       .modal-title {
@@ -480,6 +493,7 @@
       <!-- Gaming Name Modal -->
       <div id="gaming-name-modal" class="modal">
         <div class="modal-content">
+          <button class="close-btn" onclick="closeGamingNameModal()">✕</button>
           <h2 class="modal-title">Choose Your Gaming Name</h2>
           <input
             type="text"
@@ -494,6 +508,7 @@
 
       <!-- Profile Screen -->
       <div id="profile-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
         <div class="profile-container">
           <div class="profile-header">
             <h2 class="title">Your Profile</h2>
@@ -529,6 +544,7 @@
       </div>
 
       <div id="game-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
         <div class="game-container">
           <div class="game-area">
             <div class="stats">
@@ -551,6 +567,7 @@
       </div>
 
       <div id="end-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
         <h2 class="title">Game Over</h2>
         <p>Final Score: <span id="final-score">0</span></p>
         <p>Typing Speed: <span id="typing-speed">0</span> WPM</p>
@@ -562,6 +579,7 @@
       </div>
 
       <div id="leaderboard-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
         <div class="leaderboard" id="leaderboard">
           <!-- Leaderboard content will be dynamically inserted here -->
         </div>
@@ -584,6 +602,26 @@
       let isGuest = false;
       let gameInterval = null;
       let gameStartTime = null;
+
+      // Game variables
+      let score = 0;
+      let lives = 3;
+      let wordsTyped = 0;
+      let fallingObjects = [];
+      let spawnCount = 3;
+
+      // Initialize game
+      function initGame() {
+        score = 0;
+        lives = 3;
+        wordsTyped = 0;
+        fallingObjects = [];
+        gameStartTime = Date.now();
+        updateScore();
+        updateLives();
+        document.getElementById("player-name").textContent =
+          currentGamingName || "Guest";
+      }
 
       // Add missing fetchLeaderboard function
       async function fetchLeaderboard() {
@@ -658,10 +696,113 @@
             document.getElementById("login-btn").style.display = "none";
             document.getElementById("profile-btn").style.display = "block";
             document.getElementById("logout-btn").style.display = "block";
+            await loadProfileStats();
             await checkGamingName();
           }
         } catch (error) {
           console.error("Error checking auth:", error);
+        }
+      }
+
+      // Add profile stats loading
+      async function loadProfileStats() {
+        try {
+          if (!currentUser) return;
+
+          const { data, error } = await supabase
+            .from("scores")
+            .select("score, wpm")
+            .eq("profile_id", currentUser.id)
+            .order("score", { ascending: false });
+
+          if (error) throw error;
+
+          const highestScore =
+            data.length > 0 ? Math.max(...data.map((s) => s.score)) : 0;
+          const bestWPM =
+            data.length > 0 ? Math.max(...data.map((s) => s.wpm)) : 0;
+          const gamesPlayed = data.length;
+
+          // Get leaderboard position
+          const { data: allScores } = await supabase
+            .from("scores")
+            .select("score")
+            .order("score", { ascending: false });
+
+          const bestScore =
+            data.length > 0 ? Math.max(...data.map((s) => s.score)) : 0;
+          const rank = allScores.findIndex((s) => s.score === bestScore) + 1;
+
+          document.getElementById("highest-score").textContent = highestScore;
+          document.getElementById("best-wpm").textContent = bestWPM;
+          document.getElementById("games-played").textContent = gamesPlayed;
+          document.getElementById("leaderboard-rank").textContent =
+            rank > 0 ? `#${rank}` : "#-";
+        } catch (error) {
+          console.error("Error loading profile stats:", error);
+        }
+      }
+
+      // Add gaming name update function
+      async function updateGamingName(newName) {
+        try {
+          const { error } = await supabase
+            .from("profiles")
+            .update({ gaming_name: newName })
+            .eq("id", currentUser.id);
+
+          if (error) throw error;
+
+          currentGamingName = newName;
+          document.getElementById("current-gaming-name").textContent = newName;
+          return true;
+        } catch (error) {
+          console.error("Error updating gaming name:", error);
+          return false;
+        }
+      }
+
+      // Add check gaming name function
+      async function checkGamingName() {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("gaming_name")
+            .eq("id", currentUser.id)
+            .single();
+
+          if (error) throw error;
+
+          currentGamingName = data.gaming_name;
+          document.getElementById("current-gaming-name").textContent =
+            currentGamingName || "Not Set";
+        } catch (error) {
+          console.error("Error checking gaming name:", error);
+        }
+      }
+
+      // Update showScreen function to handle profile
+      function showScreen(screenId) {
+        document.querySelectorAll(".screen").forEach((screen) => {
+          screen.classList.remove("active");
+        });
+        document.getElementById(screenId).classList.add("active");
+
+        if (screenId === "profile-screen") {
+          loadProfileStats();
+          checkGamingName();
+        } else if (screenId === "leaderboard-screen") {
+          fetchLeaderboard();
+        }
+      }
+
+      // Add gaming name modal handling
+      function showGamingNameModal(isUpdate = false) {
+        const name = prompt(
+          isUpdate ? "Enter new gaming name:" : "Choose your gaming name:"
+        );
+        if (name) {
+          updateGamingName(name);
         }
       }
 
@@ -736,29 +877,6 @@
           showScreen("home-screen");
         }
       });
-
-      async function checkGamingName() {
-        if (!currentUser) return;
-
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("gaming_name, username")
-          .eq("id", currentUser.id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching profile:", error);
-          return;
-        }
-
-        if (!profile || !profile.gaming_name) {
-          const modal = document.getElementById("gaming-name-modal");
-          modal.dataset.isProfileUpdate = "false";
-          modal.classList.add("active");
-        } else {
-          currentGamingName = profile.gaming_name;
-        }
-      }
 
       async function checkAuthAndPlay() {
         if (!currentUser) {
@@ -902,318 +1020,146 @@
         }
       }
 
-      // Show different screens
-      function showScreen(screenId) {
-        document.querySelectorAll(".screen").forEach((screen) => {
-          screen.classList.remove("active");
-        });
-        document.getElementById(screenId).classList.add("active");
-
-        // Start game when game screen is shown
-        if (screenId === "game-screen") {
-          startGame();
-        } else if (screenId === "leaderboard-screen") {
-          fetchLeaderboard();
-        }
-      }
-
-      // Game variables
-      let score = 0;
-      let lives = 3;
-      let baseGameSpeed = 2000;
-      let gameSpeed = baseGameSpeed;
-      let spawnCount = 1;
-      let fallingObjects = [];
-      let startTime;
-      let wordsTyped = 0;
-      let totalCharactersTyped = 0;
-      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-      let spawnInterval;
-      let isPaused = false;
-
-      // Speed ranges for different score levels
-      const speedRanges = {
-        0: { min: 1, max: 2 }, // 0-49 points
-        50: { min: 2, max: 3 }, // 50-99 points
-        100: { min: 3, max: 4 }, // 100-149 points
-        150: { min: 4, max: 5 }, // 150+ points
-      };
-
-      // Get current speed range based on score
-      function getSpeedRange() {
-        const level = Math.floor(score / 50) * 50;
-        const maxLevel = Math.max(...Object.keys(speedRanges).map(Number));
-        const rangeKey = Math.min(level, maxLevel);
-        return speedRanges[rangeKey];
-      }
-
-      // Get random speed within current range
-      function getRandomSpeed() {
-        const range = getSpeedRange();
-        return range.min + Math.random() * (range.max - range.min);
-      }
-
-      // Programming-related words
-      const words = [
-        "function",
-        "variable",
-        "array",
-        "object",
-        "string",
-        "number",
-        "boolean",
-        "loop",
-        "if",
-        "else",
-        "return",
-        "class",
-        "method",
-        "property",
-        "const",
-        "let",
-        "var",
-        "async",
-        "await",
-        "promise",
-        "callback",
-        "module",
-        "import",
-        "export",
-        "interface",
-        "type",
-        "enum",
-        "try",
-        "catch",
-        "finally",
-        "throw",
-      ];
-
-      // Shapes for falling objects
-      const shapes = ["⬡", "⬢", "⬣", "⬤", "⬥", "⬦", "⬧", "⬨", "⬩", "⬪"];
-
       // Start game
       function startGame() {
-        if (!currentGamingName) {
-          const modal = document.getElementById("gaming-name-modal");
-          modal.dataset.isProfileUpdate = "false";
-          modal.classList.add("active");
+        if (!currentGamingName && !isGuest) {
+          showGamingNameModal();
           return;
         }
 
-        // Update player name display
-        document.getElementById("player-name").textContent =
-          currentGamingName + (isGuest ? " (Guest)" : "");
+        initGame();
+        gameInterval = setInterval(() => {
+          updateGame();
+          checkAndSpawnObjects();
+        }, 50);
 
-        // Reset game state
-        score = 0;
-        wpm = 0;
-        lives = 3;
-        gameStartTime = Date.now();
-        wordsTyped = 0;
-        document.getElementById("score").textContent = score;
-        document.getElementById("wpm").textContent = wpm;
-        updateLives();
-
-        // Start spawning words
-        gameInterval = setInterval(spawnWord, 2000);
-        document.getElementById("game-status").style.display = "none";
         document.getElementById("word-input").focus();
+        document.getElementById("game-status").style.display = "none";
       }
 
-      // Game over
-      function gameOver() {
-        clearInterval(gameInterval);
-        document.getElementById("game-status").textContent = "Game Over!";
-        document.getElementById("game-status").style.display = "block";
+      // Update game state
+      function updateGame() {
+        fallingObjects.forEach((obj, index) => {
+          obj.y += obj.speed;
+          obj.element.style.top = obj.y + "px";
 
-        // Calculate final WPM
-        const gameTimeInMinutes = (Date.now() - gameStartTime) / 60000;
-        wpm = Math.round(wordsTyped / gameTimeInMinutes);
-        document.getElementById("wpm").textContent = wpm;
-
-        // Save score
-        saveScore(score, wpm);
-
-        // Reset input
-        document.getElementById("word-input").value = "";
-
-        // Show game over message
-        setTimeout(() => {
-          document.getElementById("game-status").textContent =
-            "Press Enter to Play Again";
-        }, 2000);
-      }
-
-      // Update lives display
-      function updateLives() {
-        const livesContainer = document.getElementById("lives");
-        const livesText = document.getElementById("lives-text");
-        livesContainer.innerHTML = "";
-        livesText.textContent = lives;
-        for (let i = 0; i < lives; i++) {
-          const life = document.createElement("div");
-          life.className = "life";
-          livesContainer.appendChild(life);
-        }
-      }
-
-      // Restart game
-      function restartGame() {
-        startGame();
-        showScreen("game-screen");
+          if (obj.y > window.innerHeight) {
+            removeObject(index);
+            loseLife();
+          }
+        });
       }
 
       // Spawn falling object
       function spawnObject() {
-        try {
-          const word = words[Math.floor(Math.random() * words.length)];
-          const shape = shapes[Math.floor(Math.random() * shapes.length)];
-          const container = document.querySelector(".container");
-          const gameArea = document.querySelector(".game-area");
+        const words = [
+          "HACK",
+          "CODE",
+          "CYBER",
+          "DATA",
+          "NEURAL",
+          "MATRIX",
+          "VIRUS",
+          "SYSTEM",
+        ];
+        const word = words[Math.floor(Math.random() * words.length)];
+        const x = Math.random() * (window.innerWidth - 100);
 
-          if (!container || !gameArea) return;
+        const element = document.createElement("div");
+        element.className = "falling-object";
+        element.innerHTML = `
+          <div class="shape">⬡</div>
+          <div class="word">${word}</div>
+        `;
+        element.style.left = x + "px";
+        element.style.top = "0px";
 
-          const x = Math.random() * (container.offsetWidth - 100);
-          const object = document.createElement("div");
-          object.className = "falling-object";
+        document.querySelector(".game-area").appendChild(element);
 
-          // Create separate elements for shape and word
-          const shapeElement = document.createElement("div");
-          shapeElement.className = "shape";
-          shapeElement.textContent = shape;
-          shapeElement.style.transform = `scale(${0.8 + Math.random() * 0.4})`;
-
-          const wordElement = document.createElement("div");
-          wordElement.className = "word";
-          wordElement.textContent = word;
-
-          object.appendChild(shapeElement);
-          object.appendChild(wordElement);
-
-          object.style.left = `${x}px`;
-          object.style.top = "-50px";
-          object.dataset.word = word;
-          object.dataset.speed = getRandomSpeed(); // Assign random speed within current range
-          gameArea.appendChild(object);
-          fallingObjects.push(object);
-          moveObject(object);
-        } catch (error) {
-          console.error("Error spawning object:", error);
-        }
+        fallingObjects.push({
+          word: word,
+          element: element,
+          y: 0,
+          speed: 2 + Math.random() * 2,
+        });
       }
 
-      // Move falling object
-      function moveObject(object) {
-        try {
-          const container = document.querySelector(".game-container");
-          if (!container) return;
-
-          let position = -50;
-          const objectSpeed = parseFloat(object.dataset.speed);
-
-          const interval = setInterval(() => {
-            if (
-              !document
-                .getElementById("game-screen")
-                .classList.contains("active") ||
-              isPaused
-            ) {
-              return;
-            }
-
-            position += objectSpeed;
-            object.style.top = `${position}px`;
-
-            if (position > container.offsetHeight) {
-              clearInterval(interval);
-              object.remove();
-              fallingObjects = fallingObjects.filter((obj) => obj !== object);
-              loseLife();
-              checkAndSpawnObjects();
-            }
-          }, 20);
-
-          object.interval = interval;
-        } catch (error) {
-          console.error("Error moving object:", error);
-        }
+      // Remove object
+      function removeObject(index) {
+        fallingObjects[index].element.remove();
+        fallingObjects.splice(index, 1);
       }
 
-      // Toggle pause
-      function togglePause() {
-        isPaused = !isPaused;
-        const gameStatus = document.getElementById("game-status");
-        gameStatus.textContent = isPaused ? "PAUSED" : "";
-        gameStatus.classList.toggle("visible", isPaused);
+      // Update lives display
+      function updateLives() {
+        const livesDisplay = document.getElementById("lives");
+        livesDisplay.innerHTML = "❤️".repeat(lives);
       }
 
-      // Handle word input
-      document.getElementById("word-input").addEventListener("input", (e) => {
-        if (isPaused) {
-          e.target.value = "";
-          return;
-        }
-
-        const input = e.target.value.toLowerCase().trim();
-        if (!input) return;
-
-        const matchedObject = fallingObjects.find(
-          (object) => object.dataset.word.toLowerCase() === input
+      // Game over
+      async function gameOver() {
+        clearInterval(gameInterval);
+        const finalWpm = Math.round(
+          wordsTyped / ((Date.now() - gameStartTime) / 60000)
         );
 
-        if (matchedObject) {
-          // Award points based on word length and current level
-          const level = Math.floor(score / 50);
-          const pointMultiplier = 1 + level * 0.5;
-          score += Math.round(
-            matchedObject.dataset.word.length * pointMultiplier
-          );
+        document.getElementById("final-score").textContent = score;
+        document.getElementById("typing-speed").textContent = finalWpm;
 
-          wordsTyped++;
-          totalCharactersTyped += matchedObject.dataset.word.length;
-          updateScore();
-
-          // Clear the matched object
-          if (matchedObject.interval) {
-            clearInterval(matchedObject.interval);
-          }
-          matchedObject.remove();
-          fallingObjects = fallingObjects.filter(
-            (obj) => obj !== matchedObject
-          );
-          e.target.value = "";
-
-          // Small chance to gain a life if below max
-          if (Math.random() < 0.1 && lives < 3) {
-            gainLife();
-          }
-
-          // Check if we need to spawn new objects
-          checkAndSpawnObjects();
+        if (currentUser || isGuest) {
+          await saveScore(score, finalWpm);
         }
+
+        showScreen("end-screen");
+      }
+
+      // Handle input
+      document.getElementById("word-input").addEventListener("input", (e) => {
+        const input = e.target.value.toUpperCase();
+
+        fallingObjects.forEach((obj, index) => {
+          if (input === obj.word) {
+            removeObject(index);
+            score += 10;
+            wordsTyped++;
+            updateScore();
+            e.target.value = "";
+
+            if (score % 50 === 0) {
+              gainLife();
+            }
+          }
+        });
       });
 
-      // Handle keydown events
-      document.addEventListener("keydown", (e) => {
-        // Space to pause only when game is active
-        if (
-          e.code === "Space" &&
-          document.getElementById("game-screen").classList.contains("active")
-        ) {
-          e.preventDefault();
-          togglePause();
-          return;
-        }
-
-        // Escape to return to home screen
-        if (e.code === "Escape") {
-          showScreen("home-screen");
-          return;
-        }
-      });
+      // Restart game
+      function restartGame() {
+        showScreen("game-screen");
+        startGame();
+      }
 
       // Initialize game
       checkAuth();
+
+      // Add close gaming name modal function
+      function closeGamingNameModal() {
+        const modal = document.getElementById("gaming-name-modal");
+        modal.classList.remove("active");
+        if (isGuest) {
+          isGuest = false;
+          showScreen("home-screen");
+        }
+      }
+
+      // Update game over to include escape option
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (gameInterval) {
+            clearInterval(gameInterval);
+            showScreen("home-screen");
+          }
+        }
+      });
     </script>
   </body>
 </html>
