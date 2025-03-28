@@ -117,8 +117,7 @@
         border: 1px solid #00ffff;
         border-radius: 3px;
         z-index: 1;
-        transform: translateZ(0); /* Enable hardware acceleration */
-        will-change: top; /* Optimize animations */
+        will-change: transform;
       }
 
       .gaming-name-input {
@@ -762,6 +761,8 @@
         // Reset and prepare words container
         const wordsContainer = document.getElementById("words-container");
         wordsContainer.innerHTML = "";
+
+        // Ensure the words container has the right positioning context
         wordsContainer.style.position = "relative";
         wordsContainer.style.width = "100%";
         wordsContainer.style.height = "calc(100% - 80px)";
@@ -784,9 +785,17 @@
 
       function startGameLoop() {
         console.log("Starting game loop");
-        // Create an animation loop that runs continuously
-        function animate() {
-          updateGame();
+        // Create an animation loop that runs continuously with high FPS
+        let lastTime = 0;
+
+        function animate(timestamp) {
+          // Only update a few times per second to avoid too many DOM updates
+          if (!lastTime || timestamp - lastTime >= 16) {
+            // ~60fps
+            updateGame();
+            lastTime = timestamp;
+          }
+
           if (lives > 0) {
             gameInterval = requestAnimationFrame(animate);
           }
@@ -808,14 +817,14 @@
           obj.y += obj.speed;
 
           // Make sure the element exists before updating its position
-          if (obj.element && obj.element.style) {
-            // Use transform instead of top for better performance and to force visual update
-            obj.element.style.transform = `translateY(${Math.round(obj.y)}px)`;
+          if (obj.element && document.body.contains(obj.element)) {
+            // Apply position directly with CSS top instead of transform
+            obj.element.style.top = `${Math.round(obj.y)}px`;
 
-            // Log position for debugging
+            // Log position for first word for debugging
             if (i === 0 && fallingObjects.length > 0) {
               console.log(
-                `Word ${obj.word} at y=${obj.y}, visual position=${obj.element.style.transform}`
+                `Word ${obj.word} at y=${obj.y}, visual position=${obj.element.style.top}`
               );
             }
 
@@ -857,23 +866,22 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20;
         const x = Math.random() * maxX;
 
-        // Set initial position styles
+        // Set initial position correctly - position absolute requires both top and left
         wordElement.style.position = "absolute";
         wordElement.style.left = `${Math.round(x)}px`;
         wordElement.style.top = "0px";
-        wordElement.style.transform = "translateY(0px)";
         wordElement.style.zIndex = "10";
-        wordElement.style.willChange = "transform"; // Optimize for animations
 
         // Add to container
         document.getElementById("words-container").appendChild(wordElement);
 
-        // Add to falling objects array
+        // Add to falling objects array with faster speed
         const fallingObj = {
           element: wordElement,
           word: word,
+          x: Math.round(x),
           y: 0,
-          speed: 2 + Math.random() * 1,
+          speed: 3 + Math.random() * 2, // Faster speed
         };
 
         fallingObjects.push(fallingObj);
@@ -1382,7 +1390,7 @@
       // Restart game
       function restartGame() {
         showScreen("game-screen");
-        startGame();
+        initGame();
       }
 
       // Initialize game
