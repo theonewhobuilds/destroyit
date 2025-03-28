@@ -809,12 +809,14 @@
 
           // Make sure the element exists before updating its position
           if (obj.element && obj.element.style) {
-            // Apply position directly with !important to override any conflicting styles
-            obj.element.style.top = `${Math.round(obj.y)}px`;
+            // Use transform instead of top for better performance and to force visual update
+            obj.element.style.transform = `translateY(${Math.round(obj.y)}px)`;
 
             // Log position for debugging
             if (i === 0 && fallingObjects.length > 0) {
-              console.log(`Word ${obj.word} at y=${obj.y}`);
+              console.log(
+                `Word ${obj.word} at y=${obj.y}, visual position=${obj.element.style.transform}`
+              );
             }
 
             // Check if word hit bottom
@@ -855,12 +857,13 @@
         const maxX = gameArea.offsetWidth - wordWidth - 20;
         const x = Math.random() * maxX;
 
-        // Set position styles directly with important flags
+        // Set initial position styles
         wordElement.style.position = "absolute";
         wordElement.style.left = `${Math.round(x)}px`;
         wordElement.style.top = "0px";
+        wordElement.style.transform = "translateY(0px)";
         wordElement.style.zIndex = "10";
-        wordElement.style.transition = "none"; // Disable transitions
+        wordElement.style.willChange = "transform"; // Optimize for animations
 
         // Add to container
         document.getElementById("words-container").appendChild(wordElement);
