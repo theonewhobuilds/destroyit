@@ -291,12 +291,15 @@
 
     <script>
       // Initialize Supabase client
-      const supabaseUrl =
-        window.SUPABASE_URL || "https://ikbnuqabgdgikorhipnm.supabase.co";
-      const supabaseKey =
-        window.SUPABASE_ANON_KEY ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrYm51cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMDU5NjEsImV4cCI6MjA1ODY4MTk2MX0.hK6qmYgWe62yn-cXfRgzr9cX-MWpyfxRUjL2jAIJjoU";
+      const supabaseUrl = window.SUPABASE_URL;
+      const supabaseKey = window.SUPABASE_ANON_KEY;
       let supabase;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.error(
+          "Supabase configuration missing. Please check your environment variables."
+        );
+      }
 
       try {
         supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
