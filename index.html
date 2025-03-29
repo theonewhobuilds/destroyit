@@ -798,7 +798,6 @@
               wpm,
               username,
               profile_id,
-              is_guest,
               profiles:profile_id (
                 gaming_name
               )
@@ -823,8 +822,13 @@
               }
 
               scores.forEach((score, index) => {
+                // Determine if it's a guest based on username prefix and null profile_id
+                const isGuestPlayer =
+                  score.username?.startsWith("Guest-") ||
+                  score.profile_id === null;
+
                 let displayName;
-                if (score.is_guest) {
+                if (isGuestPlayer) {
                   displayName = score.username || "Guest Player";
                 } else {
                   displayName =
@@ -1232,7 +1236,7 @@
                   : currentGamingName,
                 score: score,
                 wpm: wpm,
-                is_guest: isGuest,
+                // is_guest field removed as it doesn't exist in schema
               };
 
               console.log("Score data:", scoreData);
