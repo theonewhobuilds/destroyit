@@ -758,12 +758,34 @@
       }
 
       function showGamingNameModal(isUpdate = false) {
+        if (isUpdate && (!currentUser || !currentUser.id)) {
+          alert("You must be logged in to change your gaming name");
+          return;
+        }
+
         const name = prompt(
           isUpdate ? "Enter new gaming name:" : "Choose your gaming name:"
         );
-        if (name) {
-          updateGamingName(name);
+
+        if (!name) {
+          // User canceled or entered empty string
+          return;
         }
+
+        if (name.trim() === "") {
+          alert("Please enter a valid gaming name");
+          return;
+        }
+
+        console.log(
+          "Attempting to update gaming name:",
+          name,
+          "isUpdate:",
+          isUpdate
+        );
+
+        // Call the update function
+        updateGamingName(name);
       }
 
       // Global fetchLeaderboard function
@@ -1034,19 +1056,76 @@
           // Add gaming name update function
           async function updateGamingName(newName) {
             try {
+              if (!currentUser || !currentUser.id) {
+                alert("You must be logged in to update your gaming name");
+                return false;
+              }
+
+              if (!newName || newName.trim() === "") {
+                alert("Please enter a valid gaming name");
+                return false;
+              }
+
+              console.log("Attempting to update gaming name to:", newName);
+
+              // First check if the name is already taken by another user
+              const { data, error: checkError } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("gaming_name", newName)
+                .neq("id", currentUser.id);
+
+              if (checkError) {
+                console.error(
+                  "Error checking gaming name availability:",
+                  checkError
+                );
+                alert(
+                  "Error checking gaming name availability. Please try again."
+                );
+                return false;
+              }
+
+              if (data && data.length > 0) {
+                alert(
+                  "This gaming name is already taken. Please choose another one."
+                );
+                return false;
+              }
+
+              // Name is available, proceed with update
               const { error } = await supabase
                 .from("profiles")
                 .update({ gaming_name: newName })
                 .eq("id", currentUser.id);
 
-              if (error) throw error;
+              if (error) {
+                console.error("Error updating gaming name:", error);
+                alert("Failed to update your gaming name. Please try again.");
+                throw error;
+              }
 
-              currentGamingName = newName;
-              document.getElementById("current-gaming-name").textContent =
-                newName;
+              // Update both global and local variables
+              window.currentGamingName = currentGamingName = newName;
+
+              // Update UI
+              if (document.getElementById("current-gaming-name")) {
+                document.getElementById("current-gaming-name").textContent =
+                  newName;
+              }
+
+              // Update player name in game if it's active
+              if (document.getElementById("player-name")) {
+                document.getElementById("player-name").textContent = newName;
+              }
+
+              alert("Gaming name updated successfully!");
               return true;
             } catch (error) {
               console.error("Error updating gaming name:", error);
+              alert(
+                "An error occurred while updating your gaming name. Please try again."
+              );
               return false;
             }
           }
