@@ -550,44 +550,24 @@
 
         // Check if user has a gaming name
         console.log("Checking if user has gaming name");
-        supabase
-          .from("profiles")
-          .select("gaming_name")
-          .eq("id", currentUser.id)
-          .single()
-          .then(({ data, error }) => {
-            console.log("Gaming name check result:", data, error);
-
-            if (error) {
-              // First check if it's "no rows returned" error
-              if (error.code === "PGRST116") {
-                console.log("New user detected, showing gaming name modal");
-                // New user without a profile - show modal
-                const modal = document.getElementById("gaming-name-modal");
-                modal.dataset.isProfileUpdate = "false";
-                modal.classList.add("active");
-                return;
-              }
-
-              console.error("Error checking gaming name:", error);
-              alert("Error checking your profile. Please try again.");
-              return;
-            }
-
-            if (!data || !data.gaming_name) {
-              console.log("No gaming name found, showing modal");
-              // Show gaming name modal for first-time users
-              const modal = document.getElementById("gaming-name-modal");
-              modal.dataset.isProfileUpdate = "false";
-              modal.classList.add("active");
+        checkGamingName()
+          .then((gamingName) => {
+            if (!gamingName) {
+              console.log("No gaming name found, showing modal directly");
+              // Instead of manually showing modal, call the function
+              document
+                .getElementById("gaming-name-modal")
+                .classList.add("active");
+              document.getElementById(
+                "gaming-name-modal"
+              ).dataset.isProfileUpdate = "false";
             } else {
-              console.log("Found gaming name:", data.gaming_name);
-              window.currentGamingName = currentGamingName = data.gaming_name;
+              console.log("Gaming name found:", gamingName);
               showScreen("game-screen");
             }
           })
           .catch((error) => {
-            console.error("Exception checking gaming name:", error);
+            console.error("Error in checkAuthAndPlay:", error);
             alert("Error checking your profile. Please try again.");
           });
       }
@@ -666,7 +646,9 @@
           "Submitting gaming name:",
           gamingName,
           "for user:",
-          currentUser ? currentUser.id : "guest"
+          currentUser ? currentUser.id : "guest",
+          "isProfileUpdate:",
+          isProfileUpdate
         );
 
         if (currentUser) {
@@ -724,6 +706,9 @@
 
                   if (!isProfileUpdate) {
                     showScreen("game-screen");
+                  } else {
+                    // Show a success message for profile updates
+                    alert("Gaming name updated successfully!");
                   }
                 });
             });
@@ -763,29 +748,16 @@
           return;
         }
 
-        const name = prompt(
-          isUpdate ? "Enter new gaming name:" : "Choose your gaming name:"
-        );
+        console.log("Showing gaming name modal, isUpdate:", isUpdate);
+        // Instead of using prompt, show the modal UI
+        const modal = document.getElementById("gaming-name-modal");
+        modal.classList.add("active");
+        modal.dataset.isProfileUpdate = isUpdate ? "true" : "false";
 
-        if (!name) {
-          // User canceled or entered empty string
-          return;
-        }
-
-        if (name.trim() === "") {
-          alert("Please enter a valid gaming name");
-          return;
-        }
-
-        console.log(
-          "Attempting to update gaming name:",
-          name,
-          "isUpdate:",
-          isUpdate
-        );
-
-        // Call the update function
-        updateGamingName(name);
+        // Focus the input field
+        setTimeout(() => {
+          document.getElementById("gaming-name-input").focus();
+        }, 100);
       }
 
       // Global fetchLeaderboard function
@@ -893,8 +865,13 @@
           // Set the global supabase reference
           supabase = window.supabase;
 
-          // Make auth functions work globally
+          // Make all functions globally accessible
           window.checkAuth = checkAuth;
+          window.loadProfileStats = loadProfileStats;
+          window.updateGamingName = updateGamingName;
+          window.checkGamingName = checkGamingName;
+          window.showGamingNameModal = showGamingNameModal;
+          window.submitGamingName = submitGamingName;
 
           // Initialize state variables (ensure these update the global variables)
           // Instead of declaring new variables, use the global ones
@@ -1140,43 +1117,54 @@
 
               console.log("Checking gaming name for user:", currentUser.id);
 
-              const { data, error } = await supabase
-                .from("profiles")
-                .select("gaming_name")
-                .eq("id", currentUser.id)
-                .single();
+              try {
+                const { data, error } = await supabase
+                  .from("profiles")
+                  .select("gaming_name")
+                  .eq("id", currentUser.id)
+                  .single();
 
-              if (error) {
-                // If not found, it might be a new user without a profile
-                if (error.code === "PGRST116") {
-                  console.log(
-                    "User has no profile yet, needs to set gaming name"
-                  );
-                  window.currentGamingName = currentGamingName = null;
+                if (error) {
+                  // If not found, it might be a new user without a profile
+                  if (error.code === "PGRST116") {
+                    console.log(
+                      "User has no profile yet, needs to set gaming name"
+                    );
+                    window.currentGamingName = currentGamingName = null;
+                    return null;
+                  }
+
+                  // Log the error but don't throw it
+                  console.error("Error in checkGamingName:", error);
                   return null;
                 }
-                throw error;
-              }
 
-              if (data && data.gaming_name) {
-                console.log("Found gaming name:", data.gaming_name);
-                window.currentGamingName = currentGamingName = data.gaming_name;
-                if (document.getElementById("current-gaming-name")) {
-                  document.getElementById("current-gaming-name").textContent =
-                    currentGamingName || "Not Set";
+                if (data && data.gaming_name) {
+                  console.log("Found gaming name:", data.gaming_name);
+                  window.currentGamingName = currentGamingName =
+                    data.gaming_name;
+                  if (document.getElementById("current-gaming-name")) {
+                    document.getElementById("current-gaming-name").textContent =
+                      currentGamingName || "Not Set";
+                  }
+                  return data.gaming_name;
+                } else {
+                  console.log("No gaming name found for user");
+                  window.currentGamingName = currentGamingName = null;
+                  if (document.getElementById("current-gaming-name")) {
+                    document.getElementById("current-gaming-name").textContent =
+                      "Not Set";
+                  }
+                  return null;
                 }
-                return data.gaming_name;
-              } else {
-                console.log("No gaming name found for user");
-                window.currentGamingName = currentGamingName = null;
-                if (document.getElementById("current-gaming-name")) {
-                  document.getElementById("current-gaming-name").textContent =
-                    "Not Set";
-                }
+              } catch (apiError) {
+                // Handle 406 and other API errors gracefully
+                console.error("API error in checkGamingName:", apiError);
+                // Don't alert the user, just return null to continue the flow
                 return null;
               }
-            } catch (error) {
-              console.error("Error checking gaming name:", error);
+            } catch (generalError) {
+              console.error("General error in checkGamingName:", generalError);
               return null;
             }
           }
