@@ -152,7 +152,10 @@
         align-items: center;
         justify-content: center;
         flex-direction: column;
-        z-index: 1;
+        z-index: 10;
+        width: 100px;
+        height: 100px;
+        text-shadow: 0 0 10px #00f7ff;
       }
 
       .falling-object .shape {
@@ -382,6 +385,8 @@
         padding: 10px;
         border-radius: 5px;
         border: 1px solid #ff00ff;
+        z-index: 100;
+        font-size: 20px;
       }
 
       .life {
@@ -827,38 +832,43 @@
           // Set the global supabase reference
           supabase = window.supabase;
 
-          // Initialize state variables
-          let currentUser = null;
-          let currentGamingName = null;
-          let isGuest = false;
-          let gameInterval = null;
-          let gameStartTime = null;
-
-          // Game variables
-          let score = 0;
-          let lives = 3;
-          let wordsTyped = 0;
-          let fallingObjects = [];
-          let spawnCount = 2;
+          // Initialize state variables (ensure these update the global variables)
+          // Instead of declaring new variables, use the global ones
 
           // Initialize game
           function initGame() {
             // Clear any existing game elements
             clearGameElements();
 
-            // Reset game variables
-            score = 0;
-            lives = 3;
-            wordsTyped = 0;
-            fallingObjects = [];
-            gameStartTime = Date.now();
+            // Reset game variables - use global variables
+            window.score = score = 0;
+            window.lives = lives = 3;
+            window.wordsTyped = wordsTyped = 0;
+            window.fallingObjects = fallingObjects = [];
+            window.gameStartTime = gameStartTime = Date.now();
 
             // Update UI
             updateScore();
-            updateLives();
+            updateLives(); // Ensure this is actually being called
             document.getElementById("player-name").textContent =
-              currentGamingName || "Guest";
+              window.currentGamingName || currentGamingName || "Guest";
+
+            // Explicitly set lives display
+            const livesDisplay = document.getElementById("lives");
+            livesDisplay.innerHTML = "❤️".repeat(lives);
+            livesDisplay.style.display = "flex";
+
+            console.log(
+              "Game initialized with player: " +
+                (window.currentGamingName || currentGamingName || "Guest")
+            );
           }
+
+          // Make internal functions available globally
+          window.initGame = initGame;
+          window.startGame = startGame;
+          window.updateGame = updateGame;
+          window.spawnObject = spawnObject;
 
           // New function to clear all game elements
           function clearGameElements() {
@@ -1092,19 +1102,23 @@
             }
 
             initGame();
+            console.log("Starting game...");
 
             // Clear any existing interval first
             if (gameInterval) {
               clearInterval(gameInterval);
+              gameInterval = null;
             }
 
             // Spawn initial object (only one at the beginning)
             spawnObject();
+            console.log("Initial object spawned");
 
             gameInterval = setInterval(() => {
               updateGame();
               checkAndSpawnObjects();
             }, 50);
+            console.log("Game loop started with interval: " + gameInterval);
 
             document.getElementById("word-input").focus();
             document.getElementById("game-status").style.display = "none";
@@ -1115,15 +1129,36 @@
             const gameArea = document.querySelector(".game-area");
             const maxY = gameArea.offsetHeight - 80; // Account for object height
 
+            if (!fallingObjects || fallingObjects.length === 0) {
+              return; // Nothing to update
+            }
+
+            // Create a safe copy of indices to potentially remove
+            const toRemove = [];
+
+            // Update positions
             fallingObjects.forEach((obj, index) => {
+              if (!obj || !obj.element) {
+                toRemove.push(index);
+                return;
+              }
+
               obj.y += obj.speed;
               obj.element.style.top = obj.y + "px";
 
               if (obj.y > maxY) {
-                removeObject(index);
+                console.log(
+                  `Object '${obj.word}' reached bottom at y=${obj.y}, maxY=${maxY}`
+                );
+                toRemove.push(index);
                 loseLife();
               }
             });
+
+            // Remove objects in reverse order to avoid index shifting issues
+            for (let i = toRemove.length - 1; i >= 0; i--) {
+              removeObject(toRemove[i]);
+            }
           }
 
           // Spawn falling object
@@ -1173,19 +1208,20 @@
             element.style.position = "absolute";
             element.style.left = x + "px";
             element.style.top = "0px";
+            element.style.zIndex = "10"; // Ensure it's visible
+            element.style.color = "#00f7ff"; // Ensure color is visible
 
             gameArea.appendChild(element);
 
             // Calculate speed based on score - make it more gradual
-            // Base speed starts at 2-4
-            const baseMinSpeed = 2;
-            const baseMaxSpeed = 4;
+            const baseMinSpeed = 1; // Slower initial speed
+            const baseMaxSpeed = 3;
 
-            // Speed increases by 0.05 units per point scored
-            const speedIncrease = score * 0.05;
+            // Speed increases by 0.03 units per point scored (more gradual)
+            const speedIncrease = score * 0.03;
 
             // Capped at a reasonable maximum
-            const maxSpeedIncrease = 10;
+            const maxSpeedIncrease = 8;
             const actualSpeedIncrease = Math.min(
               speedIncrease,
               maxSpeedIncrease
@@ -1195,6 +1231,10 @@
             const minSpeed = baseMinSpeed + actualSpeedIncrease;
             const maxSpeed = baseMaxSpeed + actualSpeedIncrease;
             const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
+
+            console.log(
+              `Created object: ${word} at position ${x}px with speed ${speed}`
+            );
 
             fallingObjects.push({
               word: word,
@@ -1206,8 +1246,27 @@
 
           // Remove object
           function removeObject(index) {
-            fallingObjects[index].element.remove();
-            fallingObjects.splice(index, 1);
+            // Check if the index is valid
+            if (index >= 0 && index < fallingObjects.length) {
+              if (fallingObjects[index] && fallingObjects[index].element) {
+                fallingObjects[index].element.remove();
+              }
+              fallingObjects.splice(index, 1);
+              console.log(
+                `Removed object at index ${index}, remaining: ${fallingObjects.length}`
+              );
+            } else {
+              console.warn(
+                `Attempted to remove invalid object index: ${index}`
+              );
+
+              // Safety cleanup - remove any objects without elements
+              for (let i = fallingObjects.length - 1; i >= 0; i--) {
+                if (!fallingObjects[i] || !fallingObjects[i].element) {
+                  fallingObjects.splice(i, 1);
+                }
+              }
+            }
           }
 
           // Update lives display
