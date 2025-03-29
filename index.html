@@ -523,6 +523,77 @@
           transform: translateY(-30px);
         }
       }
+
+      /* Powerup styles */
+      .powerup {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.7);
+        border: 2px solid #ff00ff;
+        color: #ff00ff;
+        font-size: 24px;
+        z-index: 20;
+        box-shadow: 0 0 15px #ff00ff;
+        animation: pulse 2s infinite;
+        cursor: pointer;
+      }
+
+      .powerup:hover {
+        transform: scale(1.1);
+      }
+
+      .powerup.extra-life {
+        border-color: #ff0000;
+        color: #ff0000;
+        box-shadow: 0 0 15px #ff0000;
+      }
+
+      .powerup.slowdown {
+        border-color: #00ffff;
+        color: #00ffff;
+        box-shadow: 0 0 15px #00ffff;
+      }
+
+      .powerup.pause {
+        border-color: #ffff00;
+        color: #ffff00;
+        box-shadow: 0 0 15px #ffff00;
+      }
+
+      .powerup.destroy-all {
+        border-color: #ff00ff;
+        color: #ff00ff;
+        box-shadow: 0 0 15px #ff00ff;
+      }
+
+      .powerup-effect {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 3em;
+        color: #ff00ff;
+        text-shadow: 0 0 15px #ff00ff;
+        z-index: 1000;
+        animation: expand 1s ease-out forwards;
+        pointer-events: none;
+      }
+
+      @keyframes expand {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(3);
+        }
+      }
     </style>
   </head>
   <body>
@@ -551,6 +622,13 @@
       let wordsTyped = 0;
       let fallingObjects = [];
       let spawnCount = 2;
+      let activePowerups = [];
+      let lastScoreBracket = 0;
+      let powerupSpawned = {};
+      let slowdownTimeout = null;
+      let slowdownActive = false;
+      let pauseTimeout = null;
+      let pauseActive = false;
 
       // Global functions for button actions
       function checkAuthAndPlay() {
@@ -898,7 +976,7 @@
             `
             )
             .order("score", { ascending: false })
-            .limit(10)
+            .limit(20) // Fetch more scores to handle sorting by WPM for ties
             .then(({ data: scores, error }) => {
               if (error) {
                 console.error("Error fetching leaderboard:", error);
@@ -914,6 +992,17 @@
                   "<div style='text-align:center;padding:20px;color:#00f7ff;'>No scores yet! Be the first to play!</div>";
                 return;
               }
+
+              // Sort scores by score (descending), then by WPM (descending) for ties
+              scores.sort((a, b) => {
+                if (a.score !== b.score) {
+                  return b.score - a.score; // Sort by score first (descending)
+                }
+                return b.wpm - a.wpm; // If scores are equal, sort by WPM (descending)
+              });
+
+              // Take only top 10 after sorting
+              scores = scores.slice(0, 10);
 
               scores.forEach((score, index) => {
                 // Determine if it's a guest based on username prefix and null profile_id
@@ -1517,6 +1606,218 @@
             }
           });
 
+          // Function to spawn powerups
+          function spawnPowerup() {
+            // Don't spawn powerups until score reaches 100
+            if (score < 100) return;
+
+            // Calculate current score bracket (100-199, 200-299, etc.)
+            const scoreBracket = Math.floor(score / 100);
+
+            // If this bracket is the same as last time we spawned, don't spawn again
+            if (scoreBracket <= lastScoreBracket) return;
+
+            // Check if we already spawned in this bracket
+            if (powerupSpawned[scoreBracket]) return;
+
+            // Mark this bracket as spawned
+            powerupSpawned[scoreBracket] = true;
+            lastScoreBracket = scoreBracket;
+
+            // Determine how many powerups to spawn
+            // After 300 score, spawn additional powerups based on score
+            const powerupsToSpawn = Math.min(4, Math.floor(score / 300) + 1);
+
+            console.log(
+              `Spawning ${powerupsToSpawn} powerups at score ${score}`
+            );
+
+            // Available powerup types
+            const powerupTypes = [
+              "extra-life",
+              "slowdown",
+              "pause",
+              "destroy-all",
+            ];
+
+            // Spawn the powerups
+            for (let i = 0; i < powerupsToSpawn; i++) {
+              // Get random type
+              const type =
+                powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+
+              // Get random position
+              const gameArea = document.querySelector(".game-area");
+              const areaWidth = gameArea.offsetWidth;
+              const x = Math.random() * (areaWidth - 60); // 60px is width of powerup
+
+              // Create powerup element
+              const powerup = document.createElement("div");
+              powerup.className = `powerup ${type}`;
+
+              // Set icon based on type
+              let icon;
+              switch (type) {
+                case "extra-life":
+                  icon = "❤️";
+                  break;
+                case "slowdown":
+                  icon = "⏱️";
+                  break;
+                case "pause":
+                  icon = "⏸️";
+                  break;
+                case "destroy-all":
+                  icon = "💥";
+                  break;
+              }
+
+              powerup.textContent = icon;
+              powerup.style.left = x + "px";
+              powerup.style.top = "0px";
+              powerup.dataset.type = type;
+
+              // Add click event to activate powerup
+              powerup.addEventListener("click", function () {
+                activatePowerup(type);
+                this.remove();
+              });
+
+              // Add to game area
+              gameArea.appendChild(powerup);
+
+              // Add to active powerups array for tracking
+              activePowerups.push({
+                element: powerup,
+                type: type,
+                y: 0,
+              });
+            }
+          }
+
+          // Function to activate a powerup effect
+          function activatePowerup(type) {
+            const gameArea = document.querySelector(".game-area");
+
+            // Create effect element
+            const effectElement = document.createElement("div");
+            effectElement.className = "powerup-effect";
+            gameArea.appendChild(effectElement);
+
+            // Handle different powerup types
+            switch (type) {
+              case "extra-life":
+                // Add extra life
+                effectElement.textContent = "EXTRA LIFE";
+                effectElement.style.color = "#ff0000";
+                gainLife();
+                break;
+
+              case "slowdown":
+                // Slow down falling objects
+                effectElement.textContent = "SLOWDOWN";
+                effectElement.style.color = "#00ffff";
+
+                // If already active, clear the existing timeout
+                if (slowdownTimeout) clearTimeout(slowdownTimeout);
+
+                // Apply slowdown effect
+                slowdownActive = true;
+
+                // Slow down all current objects
+                fallingObjects.forEach((obj) => {
+                  obj.originalSpeed = obj.speed;
+                  obj.speed = obj.speed * 0.5;
+                });
+
+                // Set timeout to reset speed
+                slowdownTimeout = setTimeout(() => {
+                  slowdownActive = false;
+                  fallingObjects.forEach((obj) => {
+                    if (obj.originalSpeed) obj.speed = obj.originalSpeed;
+                  });
+                }, 10000); // 10 seconds
+                break;
+
+              case "pause":
+                // Pause the game temporarily
+                effectElement.textContent = "PAUSE";
+                effectElement.style.color = "#ffff00";
+
+                // If already active, clear the existing timeout
+                if (pauseTimeout) clearTimeout(pauseTimeout);
+
+                // Clear existing interval
+                if (gameInterval) {
+                  clearInterval(gameInterval);
+                  pauseActive = true;
+                }
+
+                // Resume after 5 seconds
+                pauseTimeout = setTimeout(() => {
+                  if (pauseActive) {
+                    gameInterval = setInterval(() => {
+                      updateGame();
+                      checkAndSpawnObjects();
+                    }, 50);
+                    pauseActive = false;
+                  }
+                }, 5000); // 5 seconds
+                break;
+
+              case "destroy-all":
+                // Destroy all objects and get points
+                effectElement.textContent = "DESTROY ALL";
+                effectElement.style.color = "#ff00ff";
+
+                let totalPoints = 0;
+
+                // Calculate points for each object
+                fallingObjects.forEach((obj) => {
+                  totalPoints += obj.word.length;
+
+                  // Show score popup for each object
+                  const scorePopup = document.createElement("div");
+                  scorePopup.className = "score-popup";
+                  scorePopup.textContent = "+" + obj.word.length;
+                  scorePopup.style.position = "absolute";
+                  scorePopup.style.left = obj.element.style.left;
+                  scorePopup.style.top = obj.element.style.top;
+                  scorePopup.style.color = "#ff00ff";
+                  scorePopup.style.fontSize = "1.5em";
+                  scorePopup.style.fontWeight = "bold";
+                  scorePopup.style.zIndex = "100";
+                  scorePopup.style.textShadow = "0 0 10px #ff00ff";
+                  gameArea.appendChild(scorePopup);
+
+                  // Animate the score popup
+                  setTimeout(() => {
+                    scorePopup.style.transition = "all 1s ease-out";
+                    scorePopup.style.opacity = "0";
+                    scorePopup.style.transform = "translateY(-30px)";
+                    setTimeout(() => scorePopup.remove(), 1000);
+                  }, 10);
+                });
+
+                // Add points to score
+                score += totalPoints;
+                wordsTyped += fallingObjects.length;
+                updateScore();
+
+                // Clear all objects
+                fallingObjects.forEach((obj) => {
+                  if (obj.element) obj.element.remove();
+                });
+                fallingObjects = [];
+                break;
+            }
+
+            // Remove effect element after animation
+            setTimeout(() => {
+              effectElement.remove();
+            }, 1000);
+          }
+
           // Start game
           function startGame() {
             if (!currentGamingName && !isGuest) {
@@ -1537,6 +1838,17 @@
             spawnObject();
             console.log("Initial object spawned");
 
+            // Reset powerup tracking
+            activePowerups = [];
+            lastScoreBracket = 0;
+            powerupSpawned = {};
+
+            // Clear any active effects
+            if (slowdownTimeout) clearTimeout(slowdownTimeout);
+            if (pauseTimeout) clearTimeout(pauseTimeout);
+            slowdownActive = false;
+            pauseActive = false;
+
             gameInterval = setInterval(() => {
               updateGame();
               checkAndSpawnObjects();
@@ -1549,6 +1861,8 @@
 
           // Update game state
           function updateGame() {
+            if (pauseActive) return; // Skip updates if game is paused
+
             const gameArea = document.querySelector(".game-area");
             const maxY = gameArea.offsetHeight - 80; // Account for object height
 
@@ -1582,6 +1896,33 @@
             for (let i = toRemove.length - 1; i >= 0; i--) {
               removeObject(toRemove[i]);
             }
+
+            // Update powerups
+            const powerupsToRemove = [];
+            activePowerups.forEach((powerup, index) => {
+              if (!powerup || !powerup.element) {
+                powerupsToRemove.push(index);
+                return;
+              }
+
+              // Move powerup down slowly
+              powerup.y += 1;
+              powerup.element.style.top = powerup.y + "px";
+
+              // Remove if it goes off screen
+              if (powerup.y > maxY) {
+                powerupsToRemove.push(index);
+                powerup.element.remove();
+              }
+            });
+
+            // Remove powerups in reverse order
+            for (let i = powerupsToRemove.length - 1; i >= 0; i--) {
+              activePowerups.splice(powerupsToRemove[i], 1);
+            }
+
+            // Check for powerup spawning based on score
+            spawnPowerup();
           }
 
           // Spawn falling object
@@ -1659,12 +2000,22 @@
               `Created object: ${word} at position ${x}px with speed ${speed}`
             );
 
-            fallingObjects.push({
+            // Create the object
+            const obj = {
               word: word,
               element: element,
               y: 0,
               speed: speed,
-            });
+            };
+
+            // Apply slowdown effect if active
+            if (slowdownActive) {
+              obj.originalSpeed = speed;
+              obj.speed = speed * 0.5;
+            }
+
+            // Add to falling objects array
+            fallingObjects.push(obj);
           }
 
           // Remove object
@@ -1765,6 +2116,15 @@
                   }
                 }
               });
+            });
+
+          // Add Enter key handler to clear input field
+          document
+            .getElementById("word-input")
+            .addEventListener("keydown", (e) => {
+              if (e.key === "Enter") {
+                e.target.value = "";
+              }
             });
 
           // Initialize game
