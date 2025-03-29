@@ -1228,14 +1228,21 @@
                 isGuest ? "Guest" : currentUser?.email
               );
 
-              // Create a unique placeholder ID for guest users
-              const guestUserId = isGuest
-                ? `guest_${Date.now()}_${Math.floor(Math.random() * 10000)}`
-                : null;
+              // Generate a proper UUID for guest users
+              function generateUUID() {
+                return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+                  /[xy]/g,
+                  function (c) {
+                    var r = (Math.random() * 16) | 0,
+                      v = c == "x" ? r : (r & 0x3) | 0x8;
+                    return v.toString(16);
+                  }
+                );
+              }
 
               const scoreData = {
                 profile_id: isGuest ? null : currentUser?.id,
-                user_id: isGuest ? guestUserId : currentUser?.id, // Use placeholder ID for guests
+                user_id: isGuest ? generateUUID() : currentUser?.id, // Now using proper UUID format
                 username: isGuest
                   ? `Guest-${currentGamingName}`
                   : currentGamingName,
