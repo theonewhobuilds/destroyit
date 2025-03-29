@@ -528,6 +528,11 @@
           return;
         }
 
+        console.log(
+          "checkAuthAndPlay - Current user:",
+          currentUser ? currentUser.email : "No user"
+        );
+
         if (!currentUser) {
           // Instead of immediately redirecting to Google sign-in
           // Ask user if they want to sign in or play as guest
@@ -544,21 +549,46 @@
         }
 
         // Check if user has a gaming name
+        console.log("Checking if user has gaming name");
         supabase
           .from("profiles")
           .select("gaming_name")
           .eq("id", currentUser.id)
           .single()
           .then(({ data, error }) => {
-            if (error || !data || !data.gaming_name) {
+            console.log("Gaming name check result:", data, error);
+
+            if (error) {
+              // First check if it's "no rows returned" error
+              if (error.code === "PGRST116") {
+                console.log("New user detected, showing gaming name modal");
+                // New user without a profile - show modal
+                const modal = document.getElementById("gaming-name-modal");
+                modal.dataset.isProfileUpdate = "false";
+                modal.classList.add("active");
+                return;
+              }
+
+              console.error("Error checking gaming name:", error);
+              alert("Error checking your profile. Please try again.");
+              return;
+            }
+
+            if (!data || !data.gaming_name) {
+              console.log("No gaming name found, showing modal");
               // Show gaming name modal for first-time users
               const modal = document.getElementById("gaming-name-modal");
               modal.dataset.isProfileUpdate = "false";
               modal.classList.add("active");
             } else {
-              currentGamingName = data.gaming_name;
+              console.log("Found gaming name:", data.gaming_name);
+              window.currentGamingName = currentGamingName = data.gaming_name;
               showScreen("game-screen");
             }
+          })
+          .catch((error) => {
+            console.error("Exception checking gaming name:", error);
+            alert("Error checking your profile. Please try again.");
           });
       }
 
@@ -632,6 +662,12 @@
         }
 
         const isProfileUpdate = modal.dataset.isProfileUpdate === "true";
+        console.log(
+          "Submitting gaming name:",
+          gamingName,
+          "for user:",
+          currentUser ? currentUser.id : "guest"
+        );
 
         if (currentUser) {
           // Check if gaming name is taken and handle logged-in user
@@ -656,6 +692,7 @@
                 return;
               }
 
+              console.log("Gaming name available, updating profile");
               supabase
                 .from("profiles")
                 .upsert(
@@ -675,7 +712,8 @@
                     return;
                   }
 
-                  currentGamingName = gamingName;
+                  console.log("Profile updated successfully!");
+                  window.currentGamingName = currentGamingName = gamingName;
                   if (document.getElementById("current-gaming-name")) {
                     document.getElementById("current-gaming-name").textContent =
                       gamingName;
@@ -691,8 +729,9 @@
             });
         } else {
           // Guest player
-          currentGamingName = gamingName;
-          isGuest = true;
+          console.log("Setting guest gaming name");
+          window.currentGamingName = currentGamingName = gamingName;
+          window.isGuest = isGuest = true;
           modal.classList.remove("active");
           input.value = "";
           showScreen("game-screen");
@@ -832,6 +871,9 @@
           // Set the global supabase reference
           supabase = window.supabase;
 
+          // Make auth functions work globally
+          window.checkAuth = checkAuth;
+
           // Initialize state variables (ensure these update the global variables)
           // Instead of declaring new variables, use the global ones
 
@@ -887,10 +929,18 @@
           // Add missing checkAuth function
           async function checkAuth() {
             try {
+              console.log("Checking auth state...");
               const {
                 data: { user },
                 error,
               } = await supabase.auth.getUser();
+
+              // Log the auth check result
+              console.log(
+                "Auth check result:",
+                user ? user.email : "No user",
+                error
+              );
 
               // If we get an error about missing sub claim, it just means no user is logged in
               // This is expected behavior for new/guest users, so don't treat it as an error
@@ -900,32 +950,43 @@
                 error.message.includes("missing sub claim")
               ) {
                 // User is not logged in, which is normal - show login options
-                currentUser = null;
+                window.currentUser = currentUser = null;
                 document.getElementById("login-btn").style.display = "block";
                 document.getElementById("profile-btn").style.display = "none";
                 document.getElementById("logout-btn").style.display = "none";
                 document.querySelector(
                   'button[onclick="playAsGuest()"]'
                 ).style.display = "block";
-                return;
+                return false;
               } else if (error) {
                 // For other types of errors, we should still log them
                 throw error;
               }
 
               if (user) {
-                currentUser = user;
+                // Set global currentUser
+                window.currentUser = currentUser = user;
+                console.log("User detected:", user.email);
+
+                // Update UI for logged-in user
                 document.getElementById("login-btn").style.display = "none";
                 document.getElementById("profile-btn").style.display = "block";
                 document.getElementById("logout-btn").style.display = "block";
                 document.querySelector(
                   'button[onclick="playAsGuest()"]'
                 ).style.display = "none";
+
+                // Load user profile data
                 await loadProfileStats();
                 await checkGamingName();
+                return true;
+              } else {
+                console.log("No user detected");
+                return false;
               }
             } catch (error) {
               console.error("Error checking auth:", error);
+              return false;
             }
           }
 
@@ -993,19 +1054,51 @@
           // Add check gaming name function
           async function checkGamingName() {
             try {
+              if (!currentUser || !currentUser.id) {
+                console.log("No user to check gaming name for");
+                return null;
+              }
+
+              console.log("Checking gaming name for user:", currentUser.id);
+
               const { data, error } = await supabase
                 .from("profiles")
                 .select("gaming_name")
                 .eq("id", currentUser.id)
                 .single();
 
-              if (error) throw error;
+              if (error) {
+                // If not found, it might be a new user without a profile
+                if (error.code === "PGRST116") {
+                  console.log(
+                    "User has no profile yet, needs to set gaming name"
+                  );
+                  window.currentGamingName = currentGamingName = null;
+                  return null;
+                }
+                throw error;
+              }
 
-              currentGamingName = data.gaming_name;
-              document.getElementById("current-gaming-name").textContent =
-                currentGamingName || "Not Set";
+              if (data && data.gaming_name) {
+                console.log("Found gaming name:", data.gaming_name);
+                window.currentGamingName = currentGamingName = data.gaming_name;
+                if (document.getElementById("current-gaming-name")) {
+                  document.getElementById("current-gaming-name").textContent =
+                    currentGamingName || "Not Set";
+                }
+                return data.gaming_name;
+              } else {
+                console.log("No gaming name found for user");
+                window.currentGamingName = currentGamingName = null;
+                if (document.getElementById("current-gaming-name")) {
+                  document.getElementById("current-gaming-name").textContent =
+                    "Not Set";
+                }
+                return null;
+              }
             } catch (error) {
               console.error("Error checking gaming name:", error);
+              return null;
             }
           }
 
@@ -1072,25 +1165,47 @@
 
           // Check initial auth state
           supabase.auth.onAuthStateChange((event, session) => {
+            console.log(
+              "Auth state changed:",
+              event,
+              session ? session.user.email : "No user"
+            );
+
             if (event === "SIGNED_IN") {
-              currentUser = session.user;
+              // Set the global currentUser variable
+              window.currentUser = currentUser = session.user;
+
+              // Update UI for logged-in state
               document.getElementById("login-btn").style.display = "none";
               document.getElementById("profile-btn").style.display = "block";
               document.getElementById("logout-btn").style.display = "block";
               document.querySelector(
                 'button[onclick="playAsGuest()"]'
               ).style.display = "none";
+
+              // Check if user has a gaming name
               checkGamingName();
+
+              console.log("User signed in:", currentUser.email);
             } else if (event === "SIGNED_OUT") {
-              currentUser = null;
-              currentGamingName = null;
+              // Clear the global currentUser variable
+              window.currentUser = currentUser = null;
+              window.currentGamingName = currentGamingName = null;
+
+              // Update UI for logged-out state
               document.getElementById("login-btn").style.display = "block";
               document.getElementById("profile-btn").style.display = "none";
               document.getElementById("logout-btn").style.display = "none";
               document.querySelector(
                 'button[onclick="playAsGuest()"]'
               ).style.display = "block";
+
               showScreen("home-screen");
+              console.log("User signed out");
+            } else if (event === "USER_UPDATED") {
+              // Update the global currentUser variable
+              window.currentUser = currentUser = session.user;
+              console.log("User updated:", currentUser.email);
             }
           });
 
