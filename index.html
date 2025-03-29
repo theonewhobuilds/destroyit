@@ -811,6 +811,14 @@
           return;
         }
 
+        // Check name change limit if updating
+        if (isUpdate && !canChangeGamingName()) {
+          alert(
+            "You can only change your gaming name 3 times per day. Please try again tomorrow."
+          );
+          return;
+        }
+
         console.log("Showing gaming name modal, isUpdate:", isUpdate);
         // Instead of using prompt, show the modal UI
         const modal = document.getElementById("gaming-name-modal");
@@ -1114,6 +1122,14 @@
                 return false;
               }
 
+              // Check the daily name change limit
+              if (!canChangeGamingName()) {
+                alert(
+                  "You can only change your gaming name 3 times per day. Please try again tomorrow."
+                );
+                return false;
+              }
+
               if (!newName || newName.trim() === "") {
                 alert("Please enter a valid gaming name");
                 return false;
@@ -1182,7 +1198,10 @@
                 document.getElementById("player-name").textContent = newName;
               }
 
-              alert("Gaming name updated successfully!");
+              // If successful, increment the name change counter
+              incrementNameChangeCounter();
+
+              // Don't show the standard alert as incrementNameChangeCounter already shows one
               return true;
             } catch (error) {
               console.error("Error updating gaming name:", error);
@@ -1191,6 +1210,40 @@
               );
               return false;
             }
+          }
+
+          // Add functions to track gaming name changes
+          function canChangeGamingName() {
+            if (!currentUser) return true; // Only apply limit to logged-in users
+
+            const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+            const storageKey = `nameChanges_${currentUser.id}_${today}`;
+
+            // Get current count from localStorage
+            const currentCount = localStorage.getItem(storageKey) || "0";
+
+            // Check if limit reached
+            return parseInt(currentCount) < 3;
+          }
+
+          function incrementNameChangeCounter() {
+            if (!currentUser) return;
+
+            const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+            const storageKey = `nameChanges_${currentUser.id}_${today}`;
+
+            // Get current count from localStorage
+            const currentCount = localStorage.getItem(storageKey) || "0";
+
+            // Increment counter
+            const newCount = parseInt(currentCount) + 1;
+            localStorage.setItem(storageKey, newCount.toString());
+
+            // Inform user of remaining changes
+            const remaining = Math.max(0, 3 - newCount);
+            alert(
+              `Gaming name updated successfully! You have ${remaining} name changes remaining today.`
+            );
           }
 
           // Add check gaming name function
