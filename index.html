@@ -1228,15 +1228,19 @@
                 isGuest ? "Guest" : currentUser?.email
               );
 
+              // Create a unique placeholder ID for guest users
+              const guestUserId = isGuest
+                ? `guest_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+                : null;
+
               const scoreData = {
                 profile_id: isGuest ? null : currentUser?.id,
-                user_id: isGuest ? null : currentUser?.id,
+                user_id: isGuest ? guestUserId : currentUser?.id, // Use placeholder ID for guests
                 username: isGuest
                   ? `Guest-${currentGamingName}`
                   : currentGamingName,
                 score: score,
                 wpm: wpm,
-                // is_guest field removed as it doesn't exist in schema
               };
 
               console.log("Score data:", scoreData);
