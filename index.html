@@ -590,7 +590,8 @@
       }
 
       function playAsGuest() {
-        isGuest = true;
+        console.log("Playing as guest");
+        window.isGuest = isGuest = true;
         const modal = document.getElementById("gaming-name-modal");
         modal.dataset.isProfileUpdate = "false";
         modal.classList.add("active");
@@ -797,6 +798,7 @@
               wpm,
               username,
               profile_id,
+              is_guest,
               profiles:profile_id (
                 gaming_name
               )
@@ -821,8 +823,16 @@
               }
 
               scores.forEach((score, index) => {
-                const displayName =
-                  score.profiles?.gaming_name || score.username || "Guest";
+                let displayName;
+                if (score.is_guest) {
+                  displayName = score.username || "Guest Player";
+                } else {
+                  displayName =
+                    score.profiles?.gaming_name ||
+                    score.username ||
+                    "Unknown Player";
+                }
+
                 const item = document.createElement("div");
                 item.className = "leaderboard-item";
                 item.innerHTML = `
@@ -1209,24 +1219,41 @@
           // Save score
           async function saveScore(score, wpm) {
             try {
+              console.log(
+                "Saving score for:",
+                isGuest ? "Guest" : currentUser?.email
+              );
+
               const scoreData = {
-                profile_id: currentUser?.id,
-                user_id: currentUser?.id, // Keep for backward compatibility
-                username: currentGamingName, // Use gaming name for both guests and logged-in users
+                profile_id: isGuest ? null : currentUser?.id,
+                user_id: isGuest ? null : currentUser?.id,
+                username: isGuest
+                  ? `Guest-${currentGamingName}`
+                  : currentGamingName,
                 score: score,
                 wpm: wpm,
+                is_guest: isGuest,
               };
 
-              const { error } = await supabase
+              console.log("Score data:", scoreData);
+
+              const { data, error } = await supabase
                 .from("scores")
-                .insert([scoreData]);
+                .insert([scoreData])
+                .select();
 
-              if (error) throw error;
+              if (error) {
+                console.error("Error saving score:", error);
+                alert("Could not save your score. Error: " + error.message);
+                return;
+              }
 
+              console.log("Score saved successfully:", data);
               // Use the global fetchLeaderboard function
               fetchLeaderboard();
             } catch (error) {
-              console.error("Error saving score:", error);
+              console.error("Exception saving score:", error);
+              alert("An error occurred while saving your score.");
             }
           }
 
