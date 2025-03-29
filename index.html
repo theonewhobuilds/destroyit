@@ -499,6 +499,30 @@
         color: #00f7ff;
         margin-top: 10px;
       }
+
+      .score-info {
+        font-size: 0.8em;
+        color: #ff00ff;
+        opacity: 0.8;
+        text-shadow: 0 0 5px #ff00ff;
+        margin-top: 5px;
+      }
+
+      .score-popup {
+        animation: float-up 1s ease-out forwards;
+        pointer-events: none;
+      }
+
+      @keyframes float-up {
+        0% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-30px);
+        }
+      }
     </style>
   </head>
   <body>
@@ -1705,8 +1729,33 @@
 
               fallingObjects.forEach((obj, index) => {
                 if (input === obj.word) {
+                  // Calculate points based on word length
+                  const points = obj.word.length;
+                  score += points;
+
+                  // Show a floating score animation
+                  const scorePopup = document.createElement("div");
+                  scorePopup.className = "score-popup";
+                  scorePopup.textContent = "+" + points;
+                  scorePopup.style.position = "absolute";
+                  scorePopup.style.left = obj.element.style.left;
+                  scorePopup.style.top = obj.element.style.top;
+                  scorePopup.style.color = "#ff00ff";
+                  scorePopup.style.fontSize = "1.5em";
+                  scorePopup.style.fontWeight = "bold";
+                  scorePopup.style.zIndex = "100";
+                  scorePopup.style.textShadow = "0 0 10px #ff00ff";
+                  document.querySelector(".game-area").appendChild(scorePopup);
+
+                  // Animate the score popup
+                  setTimeout(() => {
+                    scorePopup.style.transition = "all 1s ease-out";
+                    scorePopup.style.opacity = "0";
+                    scorePopup.style.transform = "translateY(-30px)";
+                    setTimeout(() => scorePopup.remove(), 1000);
+                  }, 10);
+
                   removeObject(index);
-                  score += 10;
                   wordsTyped++;
                   updateScore();
                   e.target.value = "";
@@ -1846,6 +1895,7 @@
               <div>Score: <span id="score">0</span></div>
               <div>WPM: <span id="wpm">0</span></div>
               <div>Player: <span id="player-name">-</span></div>
+              <div class="score-info">Points = Word Length</div>
             </div>
             <div id="game-status" class="game-status">Press Enter to Start</div>
             <div class="lives" id="lives"></div>
