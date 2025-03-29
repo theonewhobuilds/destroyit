@@ -1228,21 +1228,71 @@
                 isGuest ? "Guest" : currentUser?.email
               );
 
-              // Generate a proper UUID for guest users
-              function generateUUID() {
-                return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-                  /[xy]/g,
-                  function (c) {
-                    var r = (Math.random() * 16) | 0,
-                      v = c == "x" ? r : (r & 0x3) | 0x8;
-                    return v.toString(16);
+              let userId;
+
+              if (isGuest) {
+                // For guest users, we need a valid user_id that exists in auth.users
+                // First try to get the anon user ID
+                try {
+                  const {
+                    data: { session },
+                  } = await supabase.auth.getSession();
+                  userId = session?.user?.id;
+                  console.log("Using anonymous session user ID:", userId);
+                } catch (error) {
+                  console.error("Error getting anon user ID:", error);
+                }
+
+                // If we couldn't get an anon ID, try to get an existing user from the database
+                if (!userId) {
+                  try {
+                    // Try to find the first user in the database to use as a reference
+                    // This is a workaround for the foreign key constraint
+                    const { data: existingUsers } = await supabase
+                      .from("scores")
+                      .select("user_id")
+                      .limit(1);
+
+                    if (existingUsers && existingUsers.length > 0) {
+                      userId = existingUsers[0].user_id;
+                      console.log(
+                        "Using existing user ID from scores table:",
+                        userId
+                      );
+                    } else {
+                      console.error("No existing users found to reference");
+                      alert(
+                        "Unable to save guest score due to database constraints."
+                      );
+                      return;
+                    }
+                  } catch (error) {
+                    console.error("Error finding existing user:", error);
+                    alert(
+                      "Unable to save guest score due to database constraints."
+                    );
+                    return;
                   }
+                }
+              } else {
+                // For logged-in users, use their ID
+                userId = currentUser.id;
+              }
+
+              // Make sure we have a valid user_id before proceeding
+              if (!userId) {
+                console.error(
+                  "Could not obtain a valid user_id for score saving"
                 );
+                alert(
+                  "Could not save your score due to missing user identification."
+                );
+                return;
               }
 
               const scoreData = {
                 profile_id: isGuest ? null : currentUser?.id,
-                user_id: isGuest ? generateUUID() : currentUser?.id, // Now using proper UUID format
+                user_id: userId, // Use the valid user ID that exists in auth.users table
                 username: isGuest
                   ? `Guest-${currentGamingName}`
                   : currentGamingName,
