@@ -435,6 +435,13 @@
         text-shadow: 0 0 10px #00f7ff;
       }
 
+      .modal-instructions {
+        color: #ff00ff;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+        line-height: 1.4;
+      }
+
       .gaming-name-input {
         width: 100%;
         padding: 15px;
@@ -635,12 +642,22 @@
 
         const modal = document.getElementById("gaming-name-modal");
         const input = document.getElementById("gaming-name-input");
-        const gamingName = input.value.trim();
+        let gamingName = input.value.trim();
 
         if (!gamingName) {
           alert("Please enter a gaming name");
           return;
         }
+
+        // Validate gaming name format
+        const validationResult = validateGamingName(gamingName);
+        if (!validationResult.valid) {
+          alert(validationResult.message);
+          return;
+        }
+
+        // Use the sanitized gaming name
+        gamingName = validationResult.sanitized;
 
         const isProfileUpdate = modal.dataset.isProfileUpdate === "true";
         console.log(
@@ -722,6 +739,51 @@
           input.value = "";
           showScreen("game-screen");
         }
+      }
+
+      // Add new validation function for gaming names
+      function validateGamingName(name) {
+        // Check if there's any input at all
+        if (!name || name.trim() === "") {
+          return {
+            valid: false,
+            message: "Please enter a gaming name",
+            sanitized: "",
+          };
+        }
+
+        // Convert to lowercase
+        let sanitized = name.toLowerCase();
+
+        // Remove spaces and special characters, keep only alphanumeric and underscores
+        const originalLength = sanitized.length;
+        sanitized = sanitized.replace(/[^a-z0-9_]/g, "");
+
+        // Check if the name is too short after sanitization
+        if (sanitized.length < 3) {
+          return {
+            valid: false,
+            message:
+              "Gaming name must be at least 3 alphanumeric characters (a-z, 0-9, _)",
+            sanitized: "",
+          };
+        }
+
+        // If the name was changed during sanitization, inform the user
+        if (sanitized !== name.toLowerCase()) {
+          return {
+            valid: true,
+            message:
+              "Your gaming name was adjusted to meet our format requirements (lowercase, alphanumeric only)",
+            sanitized: sanitized,
+          };
+        }
+
+        return {
+          valid: true,
+          message: "",
+          sanitized: sanitized,
+        };
       }
 
       function logout() {
@@ -1044,7 +1106,7 @@
             }
           }
 
-          // Add gaming name update function
+          // Update gaming name update function to use validation
           async function updateGamingName(newName) {
             try {
               if (!currentUser || !currentUser.id) {
@@ -1056,6 +1118,16 @@
                 alert("Please enter a valid gaming name");
                 return false;
               }
+
+              // Validate gaming name format
+              const validationResult = validateGamingName(newName);
+              if (!validationResult.valid) {
+                alert(validationResult.message);
+                return false;
+              }
+
+              // Use the sanitized gaming name
+              newName = validationResult.sanitized;
 
               console.log("Attempting to update gaming name to:", newName);
 
@@ -1656,6 +1728,10 @@
         <div class="modal-content">
           <button class="close-btn" onclick="closeGamingNameModal()">✕</button>
           <h2 class="modal-title">Choose Your Gaming Name</h2>
+          <p class="modal-instructions">
+            Gaming names must be lowercase alphanumeric characters (a-z, 0-9)
+            and underscores only. Minimum 3 characters.
+          </p>
           <input
             type="text"
             id="gaming-name-input"
