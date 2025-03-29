@@ -524,7 +524,17 @@
         }
 
         if (!currentUser) {
-          signInWithGoogle();
+          // Instead of immediately redirecting to Google sign-in
+          // Ask user if they want to sign in or play as guest
+          if (
+            confirm(
+              "Would you like to sign in with Google to save your scores? Click Cancel to play as guest."
+            )
+          ) {
+            signInWithGoogle();
+          } else {
+            playAsGuest(); // Use the existing guest flow
+          }
           return;
         }
 
@@ -711,6 +721,85 @@
           updateGamingName(name);
         }
       }
+
+      // Global fetchLeaderboard function
+      function fetchLeaderboard() {
+        if (!supabase) {
+          console.error("Cannot fetch leaderboard: Supabase not initialized");
+          return;
+        }
+
+        try {
+          const leaderboardDiv = document.getElementById("leaderboard");
+          leaderboardDiv.innerHTML = `
+            <div class="leaderboard-container">
+              <h2 class="leaderboard-title">CYBERPUNK LEADERBOARD</h2>
+              <div class="leaderboard-header">
+                <div>Rank</div>
+                <div>Player</div>
+                <div>Score</div>
+                <div>WPM</div>
+              </div>
+              <div id="leaderboard-content"></div>
+            </div>
+          `;
+
+          // Show loading indicator
+          const content = document.getElementById("leaderboard-content");
+          content.innerHTML =
+            "<div style='text-align:center;padding:20px;color:#00f7ff;'>Loading leaderboard data...</div>";
+
+          // Fetch leaderboard data
+          supabase
+            .from("scores")
+            .select(
+              `
+              id,
+              score,
+              wpm,
+              username,
+              profile_id,
+              profiles:profile_id (
+                gaming_name
+              )
+            `
+            )
+            .order("score", { ascending: false })
+            .limit(10)
+            .then(({ data: scores, error }) => {
+              if (error) {
+                console.error("Error fetching leaderboard:", error);
+                content.innerHTML =
+                  "<div style='text-align:center;color:#ff00ff;padding:20px;'>Error loading leaderboard</div>";
+                return;
+              }
+
+              content.innerHTML = "";
+
+              if (!scores || scores.length === 0) {
+                content.innerHTML =
+                  "<div style='text-align:center;padding:20px;color:#00f7ff;'>No scores yet! Be the first to play!</div>";
+                return;
+              }
+
+              scores.forEach((score, index) => {
+                const displayName =
+                  score.profiles?.gaming_name || score.username || "Guest";
+                const item = document.createElement("div");
+                item.className = "leaderboard-item";
+                item.innerHTML = `
+                  <div class="rank">#${index + 1}</div>
+                  <div class="username">${displayName}</div>
+                  <div class="score">${score.score}</div>
+                  <div class="wpm">${score.wpm}</div>
+                `;
+                content.appendChild(item);
+              });
+            });
+        } catch (error) {
+          console.error("Error in fetchLeaderboard:", error);
+        }
+      }
     </script>
 
     <!-- Main game initialization -->
@@ -783,67 +872,6 @@
 
             // Clear word input
             document.getElementById("word-input").value = "";
-          }
-
-          // Add missing fetchLeaderboard function
-          async function fetchLeaderboard() {
-            try {
-              const leaderboardDiv = document.getElementById("leaderboard");
-              leaderboardDiv.innerHTML = `
-                <div class="leaderboard-container">
-                  <h2 class="leaderboard-title">CYBERPUNK LEADERBOARD</h2>
-                  <div class="leaderboard-header">
-                    <div>Rank</div>
-                    <div>Player</div>
-                    <div>Score</div>
-                    <div>WPM</div>
-                  </div>
-                  <div id="leaderboard-content"></div>
-                </div>
-              `;
-
-              const { data: scores, error } = await supabase
-                .from("scores")
-                .select(
-                  `
-                  id,
-                  score,
-                  wpm,
-                  username,
-                  profiles:profile_id (
-                    gaming_name
-                  )
-                `
-                )
-                .order("score", { ascending: false })
-                .limit(10);
-
-              if (error) {
-                console.error("Error fetching leaderboard:", error);
-                return;
-              }
-
-              const leaderboardContent = document.getElementById(
-                "leaderboard-content"
-              );
-              leaderboardContent.innerHTML = "";
-
-              scores.forEach((score, index) => {
-                const displayName =
-                  score.profiles?.gaming_name || score.username || "Guest";
-                const item = document.createElement("div");
-                item.className = "leaderboard-item";
-                item.innerHTML = `
-                  <div class="rank">#${index + 1}</div>
-                  <div class="username">${displayName}</div>
-                  <div class="score">${score.score}</div>
-                  <div class="wpm">${score.wpm}</div>
-                `;
-                leaderboardContent.appendChild(item);
-              });
-            } catch (error) {
-              console.error("Error in fetchLeaderboard:", error);
-            }
           }
 
           // Add missing checkAuth function
@@ -1012,7 +1040,8 @@
           async function saveScore(score, wpm) {
             try {
               const scoreData = {
-                user_id: currentUser?.id,
+                profile_id: currentUser?.id,
+                user_id: currentUser?.id, // Keep for backward compatibility
                 username: currentGamingName, // Use gaming name for both guests and logged-in users
                 score: score,
                 wpm: wpm,
@@ -1024,7 +1053,8 @@
 
               if (error) throw error;
 
-              fetchLeaderboard(); // Changed from updateLeaderboard to fetchLeaderboard
+              // Use the global fetchLeaderboard function
+              fetchLeaderboard();
             } catch (error) {
               console.error("Error saving score:", error);
             }
@@ -1231,10 +1261,8 @@
             });
 
           // Initialize game
-          checkAuth();
-
-          // Also check auth on page load to handle the Play as Guest button visibility
-          window.addEventListener("DOMContentLoaded", () => {
+          checkAuth().then(() => {
+            // Check initial UI state based on auth
             if (currentUser) {
               document.querySelector(
                 'button[onclick="playAsGuest()"]'
