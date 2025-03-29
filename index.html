@@ -492,7 +492,7 @@
   <body>
     <!-- Add Supabase JS library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-    <!-- Direct initialization with hardcoded credentials -->
+    <!-- Declare global functions -->
     <script>
       // Hardcoded Supabase credentials - these are public anyway
       const SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
@@ -503,145 +503,219 @@
       window.SUPABASE_URL = SUPABASE_URL;
       window.SUPABASE_ANON_KEY = SUPABASE_KEY;
 
-      console.log("Using hardcoded Supabase credentials");
+      // Global variables
+      let supabase;
+      let currentUser = null;
+      let currentGamingName = null;
+      let isGuest = false;
+      let gameInterval = null;
+      let gameStartTime = null;
+      let score = 0;
+      let lives = 3;
+      let wordsTyped = 0;
+      let fallingObjects = [];
+      let spawnCount = 2;
+
+      // Global functions for button actions
+      function checkAuthAndPlay() {
+        if (!supabase) {
+          console.log("Game is not yet initialized");
+          return;
+        }
+
+        if (!currentUser) {
+          signInWithGoogle();
+          return;
+        }
+
+        // Check if user has a gaming name
+        supabase
+          .from("profiles")
+          .select("gaming_name")
+          .eq("id", currentUser.id)
+          .single()
+          .then(({ data, error }) => {
+            if (error || !data || !data.gaming_name) {
+              // Show gaming name modal for first-time users
+              const modal = document.getElementById("gaming-name-modal");
+              modal.dataset.isProfileUpdate = "false";
+              modal.classList.add("active");
+            } else {
+              currentGamingName = data.gaming_name;
+              showScreen("game-screen");
+            }
+          });
+      }
+
+      function showScreen(screenId) {
+        document.querySelectorAll(".screen").forEach((screen) => {
+          screen.classList.remove("active");
+        });
+        document.getElementById(screenId).classList.add("active");
+
+        if (screenId === "profile-screen") {
+          loadProfileStats();
+          checkGamingName();
+        } else if (screenId === "leaderboard-screen") {
+          fetchLeaderboard();
+        } else if (screenId === "game-screen") {
+          // Automatically start the game when showing game screen
+          startGame();
+        }
+      }
+
+      function playAsGuest() {
+        isGuest = true;
+        const modal = document.getElementById("gaming-name-modal");
+        modal.dataset.isProfileUpdate = "false";
+        modal.classList.add("active");
+      }
+
+      function signInWithGoogle() {
+        if (!supabase) {
+          console.log("Game is not yet initialized");
+          return;
+        }
+
+        supabase.auth
+          .signInWithOAuth({
+            provider: "google",
+            options: {
+              queryParams: {
+                access_type: "offline",
+                prompt: "consent",
+              },
+            },
+          })
+          .catch((error) => {
+            console.error("Error signing in with Google:", error.message);
+          });
+      }
+
+      function closeGamingNameModal() {
+        const modal = document.getElementById("gaming-name-modal");
+        modal.classList.remove("active");
+        if (isGuest) {
+          isGuest = false;
+          showScreen("home-screen");
+        }
+      }
+
+      function submitGamingName() {
+        if (!supabase) {
+          console.log("Game is not yet initialized");
+          return;
+        }
+
+        const modal = document.getElementById("gaming-name-modal");
+        const input = document.getElementById("gaming-name-input");
+        const gamingName = input.value.trim();
+
+        if (!gamingName) {
+          alert("Please enter a gaming name");
+          return;
+        }
+
+        const isProfileUpdate = modal.dataset.isProfileUpdate === "true";
+
+        if (currentUser) {
+          // Check if gaming name is taken and handle logged-in user
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("gaming_name", gamingName)
+            .neq("id", currentUser.id)
+            .then(({ data, error: checkError }) => {
+              if (checkError) {
+                console.error("Error checking gaming name:", checkError);
+                alert(
+                  "Error checking gaming name availability. Please try again."
+                );
+                return;
+              }
+
+              if (data && data.length > 0) {
+                alert(
+                  "This gaming name is already taken. Please choose another one."
+                );
+                return;
+              }
+
+              supabase
+                .from("profiles")
+                .upsert(
+                  {
+                    id: currentUser.id,
+                    username: currentUser.email.split("@")[0],
+                    gaming_name: gamingName,
+                    email: currentUser.email,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "id" }
+                )
+                .then(({ error: upsertError }) => {
+                  if (upsertError) {
+                    console.error("Error updating gaming name:", upsertError);
+                    alert("Error updating gaming name. Please try again.");
+                    return;
+                  }
+
+                  currentGamingName = gamingName;
+                  if (document.getElementById("current-gaming-name")) {
+                    document.getElementById("current-gaming-name").textContent =
+                      gamingName;
+                  }
+
+                  modal.classList.remove("active");
+                  input.value = "";
+
+                  if (!isProfileUpdate) {
+                    showScreen("game-screen");
+                  }
+                });
+            });
+        } else {
+          // Guest player
+          currentGamingName = gamingName;
+          isGuest = true;
+          modal.classList.remove("active");
+          input.value = "";
+          showScreen("game-screen");
+        }
+      }
+
+      function logout() {
+        if (!supabase) {
+          console.log("Game is not yet initialized");
+          return;
+        }
+
+        supabase.auth.signOut().then(() => {
+          currentUser = null;
+          currentGamingName = null;
+          isGuest = false;
+          showScreen("home-screen");
+        });
+      }
+
+      function restartGame() {
+        showScreen("game-screen");
+        startGame();
+      }
+
+      function showGamingNameModal(isUpdate = false) {
+        const name = prompt(
+          isUpdate ? "Enter new gaming name:" : "Choose your gaming name:"
+        );
+        if (name) {
+          updateGamingName(name);
+        }
+      }
     </script>
-    <div class="container">
-      <div id="home-screen" class="screen active">
-        <h1 class="title">Cyberpunk Typing</h1>
-        <button class="btn" id="play-btn" onclick="checkAuthAndPlay()">
-          Play Game
-        </button>
-        <button class="btn" onclick="showScreen('leaderboard-screen')">
-          Leaderboard
-        </button>
-        <button class="btn" onclick="playAsGuest()">Play as Guest</button>
-        <button class="btn" id="login-btn" onclick="signInWithGoogle()">
-          Sign in with Google
-        </button>
-        <button
-          class="btn"
-          id="profile-btn"
-          onclick="showScreen('profile-screen')"
-          style="display: none"
-        >
-          Profile
-        </button>
-        <button
-          class="btn"
-          id="logout-btn"
-          onclick="logout()"
-          style="display: none"
-        >
-          Logout
-        </button>
-      </div>
 
-      <!-- Gaming Name Modal -->
-      <div id="gaming-name-modal" class="modal">
-        <div class="modal-content">
-          <button class="close-btn" onclick="closeGamingNameModal()">✕</button>
-          <h2 class="modal-title">Choose Your Gaming Name</h2>
-          <input
-            type="text"
-            id="gaming-name-input"
-            class="gaming-name-input"
-            placeholder="Enter your gaming name"
-            maxlength="20"
-          />
-          <button class="btn" onclick="submitGamingName()">Continue</button>
-        </div>
-      </div>
-
-      <!-- Profile Screen -->
-      <div id="profile-screen" class="screen">
-        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
-        <div class="profile-container">
-          <div class="profile-header">
-            <h2 class="title">Your Profile</h2>
-            <div class="gaming-name">
-              <h3>Gaming Name: <span id="current-gaming-name"></span></h3>
-              <button class="btn" onclick="showGamingNameModal(true)">
-                Change Name
-              </button>
-            </div>
-          </div>
-          <div class="profile-stats">
-            <div class="stat-card">
-              <div class="stat-value" id="highest-score">0</div>
-              <div class="stat-label">Highest Score</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="best-wpm">0</div>
-              <div class="stat-label">Best WPM</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="games-played">0</div>
-              <div class="stat-label">Games Played</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="leaderboard-rank">#0</div>
-              <div class="stat-label">Best Ranking</div>
-            </div>
-          </div>
-          <button class="back-btn" onclick="showScreen('home-screen')">
-            Back to Home
-          </button>
-        </div>
-      </div>
-
-      <div id="game-screen" class="screen">
-        <button
-          class="close-btn game-close-btn"
-          onclick="showScreen('home-screen')"
-        >
-          ✕
-        </button>
-        <div class="game-container">
-          <div class="game-area">
-            <div class="stats">
-              <div>Score: <span id="score">0</span></div>
-              <div>WPM: <span id="wpm">0</span></div>
-              <div>Player: <span id="player-name">-</span></div>
-            </div>
-            <div id="game-status" class="game-status">Press Enter to Start</div>
-            <div class="lives" id="lives"></div>
-          </div>
-          <div class="input-container">
-            <input
-              type="text"
-              id="word-input"
-              placeholder="Type here..."
-              autocomplete="off"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div id="end-screen" class="screen">
-        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
-        <h2 class="title">Game Over</h2>
-        <p>Final Score: <span id="final-score">0</span></p>
-        <p>Typing Speed: <span id="typing-speed">0</span> WPM</p>
-        <button class="btn" onclick="restartGame()">Play Again</button>
-        <button class="btn" onclick="showScreen('leaderboard-screen')">
-          Leaderboard
-        </button>
-        <button class="btn" onclick="showScreen('home-screen')">Home</button>
-      </div>
-
-      <div id="leaderboard-screen" class="screen">
-        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
-        <div class="leaderboard" id="leaderboard">
-          <!-- Leaderboard content will be dynamically inserted here -->
-        </div>
-      </div>
-    </div>
-
+    <!-- Main game initialization -->
     <script>
       // Initialize Supabase client first, before any other code
-      let supabase;
-
-      // Wait until DOM is loaded to initialize
       document.addEventListener("DOMContentLoaded", function () {
         try {
           // Use the hardcoded Supabase credentials
@@ -655,11 +729,14 @@
             supabaseUrl = "https://" + supabaseUrl;
           }
 
-          // Initialize Supabase client with the validated URL
-          supabase = window.supabase.createClient(
+          // Initialize Supabase client with the validated URL and set to the global variable
+          window.supabase = window.supabase.createClient(
             supabaseUrl,
             window.SUPABASE_ANON_KEY
           );
+
+          // Set the global supabase reference
+          supabase = window.supabase;
 
           // Initialize state variables
           let currentUser = null;
@@ -894,34 +971,6 @@
             }
           }
 
-          // Update showScreen function to handle profile
-          function showScreen(screenId) {
-            document.querySelectorAll(".screen").forEach((screen) => {
-              screen.classList.remove("active");
-            });
-            document.getElementById(screenId).classList.add("active");
-
-            if (screenId === "profile-screen") {
-              loadProfileStats();
-              checkGamingName();
-            } else if (screenId === "leaderboard-screen") {
-              fetchLeaderboard();
-            } else if (screenId === "game-screen") {
-              // Automatically start the game when showing game screen
-              startGame();
-            }
-          }
-
-          // Add gaming name modal handling
-          function showGamingNameModal(isUpdate = false) {
-            const name = prompt(
-              isUpdate ? "Enter new gaming name:" : "Choose your gaming name:"
-            );
-            if (name) {
-              updateGamingName(name);
-            }
-          }
-
           // Add missing updateScore function
           function updateScore() {
             document.getElementById("score").textContent = score;
@@ -1004,147 +1053,6 @@
               showScreen("home-screen");
             }
           });
-
-          async function checkAuthAndPlay() {
-            if (!currentUser) {
-              signInWithGoogle();
-              return;
-            }
-
-            // Check if user has a gaming name
-            const { data: profile, error } = await supabase
-              .from("profiles")
-              .select("gaming_name")
-              .eq("id", currentUser.id)
-              .single();
-
-            if (error || !profile || !profile.gaming_name) {
-              // Show gaming name modal for first-time users
-              const modal = document.getElementById("gaming-name-modal");
-              modal.dataset.isProfileUpdate = "false";
-              modal.classList.add("active");
-            } else {
-              currentGamingName = profile.gaming_name;
-              showScreen("game-screen");
-            }
-          }
-
-          function playAsGuest() {
-            isGuest = true;
-            const modal = document.getElementById("gaming-name-modal");
-            modal.dataset.isProfileUpdate = "false";
-            modal.classList.add("active");
-          }
-
-          // Submit gaming name
-          async function submitGamingName() {
-            const modal = document.getElementById("gaming-name-modal");
-            const input = document.getElementById("gaming-name-input");
-            const gamingName = input.value.trim();
-
-            if (!gamingName) {
-              alert("Please enter a gaming name");
-              return;
-            }
-
-            const isProfileUpdate = modal.dataset.isProfileUpdate === "true";
-
-            if (currentUser) {
-              try {
-                // First check if the gaming name is already taken
-                const { data, error: checkError } = await supabase
-                  .from("profiles")
-                  .select("id")
-                  .eq("gaming_name", gamingName)
-                  .neq("id", currentUser.id);
-
-                if (checkError) {
-                  console.error("Error checking gaming name:", checkError);
-                  alert(
-                    "Error checking gaming name availability. Please try again."
-                  );
-                  return;
-                }
-
-                if (data && data.length > 0) {
-                  alert(
-                    "This gaming name is already taken. Please choose another one."
-                  );
-                  return;
-                }
-
-                const { error: upsertError } = await supabase
-                  .from("profiles")
-                  .upsert(
-                    {
-                      id: currentUser.id,
-                      username: currentUser.email.split("@")[0],
-                      gaming_name: gamingName,
-                      email: currentUser.email,
-                      updated_at: new Date().toISOString(),
-                    },
-                    {
-                      onConflict: "id",
-                    }
-                  );
-
-                if (upsertError) {
-                  console.error("Error updating gaming name:", upsertError);
-                  alert("Error updating gaming name. Please try again.");
-                  return;
-                }
-
-                currentGamingName = gamingName;
-                if (document.getElementById("current-gaming-name")) {
-                  document.getElementById("current-gaming-name").textContent =
-                    gamingName;
-                }
-              } catch (error) {
-                console.error("Error in gaming name update:", error);
-                alert("Error updating gaming name. Please try again.");
-                return;
-              }
-            } else {
-              // Guest player
-              currentGamingName = gamingName;
-              isGuest = true;
-            }
-
-            modal.classList.remove("active");
-            input.value = "";
-
-            if (!isProfileUpdate) {
-              showScreen("game-screen");
-            }
-          }
-
-          // Logout
-          async function logout() {
-            await supabase.auth.signOut();
-            currentUser = null;
-            currentGamingName = null;
-            isGuest = false;
-            showScreen("home-screen");
-          }
-
-          // Sign in with Google
-          async function signInWithGoogle() {
-            try {
-              const { error } = await supabase.auth.signInWithOAuth({
-                provider: "google",
-                options: {
-                  queryParams: {
-                    access_type: "offline",
-                    prompt: "consent",
-                  },
-                },
-              });
-
-              if (error) throw error;
-            } catch (error) {
-              console.error("Error signing in with Google:", error.message);
-            }
-          }
 
           // Start game
           function startGame() {
@@ -1322,12 +1230,6 @@
               });
             });
 
-          // Restart game
-          function restartGame() {
-            showScreen("game-screen");
-            startGame();
-          }
-
           // Initialize game
           checkAuth();
 
@@ -1340,16 +1242,6 @@
             }
           });
 
-          // Add close gaming name modal function
-          function closeGamingNameModal() {
-            const modal = document.getElementById("gaming-name-modal");
-            modal.classList.remove("active");
-            if (isGuest) {
-              isGuest = false;
-              showScreen("home-screen");
-            }
-          }
-
           // Update game over to include escape option
           document.addEventListener("keydown", (e) => {
             if (e.key === "Escape") {
@@ -1361,11 +1253,142 @@
           });
 
           // Log success
-          console.log("Game code initialized successfully");
+          // console.log("Game code initialized successfully");
         } catch (error) {
           console.error("Error initializing Supabase or game:", error);
         }
       });
     </script>
+    <div class="container">
+      <div id="home-screen" class="screen active">
+        <h1 class="title">Cyberpunk Typing</h1>
+        <button class="btn" id="play-btn" onclick="checkAuthAndPlay()">
+          Play Game
+        </button>
+        <button class="btn" onclick="showScreen('leaderboard-screen')">
+          Leaderboard
+        </button>
+        <button class="btn" onclick="playAsGuest()">Play as Guest</button>
+        <button class="btn" id="login-btn" onclick="signInWithGoogle()">
+          Sign in with Google
+        </button>
+        <button
+          class="btn"
+          id="profile-btn"
+          onclick="showScreen('profile-screen')"
+          style="display: none"
+        >
+          Profile
+        </button>
+        <button
+          class="btn"
+          id="logout-btn"
+          onclick="logout()"
+          style="display: none"
+        >
+          Logout
+        </button>
+      </div>
+
+      <!-- Gaming Name Modal -->
+      <div id="gaming-name-modal" class="modal">
+        <div class="modal-content">
+          <button class="close-btn" onclick="closeGamingNameModal()">✕</button>
+          <h2 class="modal-title">Choose Your Gaming Name</h2>
+          <input
+            type="text"
+            id="gaming-name-input"
+            class="gaming-name-input"
+            placeholder="Enter your gaming name"
+            maxlength="20"
+          />
+          <button class="btn" onclick="submitGamingName()">Continue</button>
+        </div>
+      </div>
+
+      <!-- Profile Screen -->
+      <div id="profile-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
+        <div class="profile-container">
+          <div class="profile-header">
+            <h2 class="title">Your Profile</h2>
+            <div class="gaming-name">
+              <h3>Gaming Name: <span id="current-gaming-name"></span></h3>
+              <button class="btn" onclick="showGamingNameModal(true)">
+                Change Name
+              </button>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="stat-card">
+              <div class="stat-value" id="highest-score">0</div>
+              <div class="stat-label">Highest Score</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="best-wpm">0</div>
+              <div class="stat-label">Best WPM</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="games-played">0</div>
+              <div class="stat-label">Games Played</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="leaderboard-rank">#0</div>
+              <div class="stat-label">Best Ranking</div>
+            </div>
+          </div>
+          <button class="back-btn" onclick="showScreen('home-screen')">
+            Back to Home
+          </button>
+        </div>
+      </div>
+
+      <div id="game-screen" class="screen">
+        <button
+          class="close-btn game-close-btn"
+          onclick="showScreen('home-screen')"
+        >
+          ✕
+        </button>
+        <div class="game-container">
+          <div class="game-area">
+            <div class="stats">
+              <div>Score: <span id="score">0</span></div>
+              <div>WPM: <span id="wpm">0</span></div>
+              <div>Player: <span id="player-name">-</span></div>
+            </div>
+            <div id="game-status" class="game-status">Press Enter to Start</div>
+            <div class="lives" id="lives"></div>
+          </div>
+          <div class="input-container">
+            <input
+              type="text"
+              id="word-input"
+              placeholder="Type here..."
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div id="end-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
+        <h2 class="title">Game Over</h2>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <p>Typing Speed: <span id="typing-speed">0</span> WPM</p>
+        <button class="btn" onclick="restartGame()">Play Again</button>
+        <button class="btn" onclick="showScreen('leaderboard-screen')">
+          Leaderboard
+        </button>
+        <button class="btn" onclick="showScreen('home-screen')">Home</button>
+      </div>
+
+      <div id="leaderboard-screen" class="screen">
+        <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
+        <div class="leaderboard" id="leaderboard">
+          <!-- Leaderboard content will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
   </body>
 </html>
