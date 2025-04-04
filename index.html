@@ -1,17 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cyberpunk Typing Game</title>
+    <!-- Link to External CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Add Supabase JS library (needed before our script) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Home Screen -->
+      <div id="home-screen" class="screen active">
+        <h1 class="title">Cyberpunk Typing</h1>
+        <button class="btn" id="play-btn" onclick="checkAuthAndPlay()">Play Game</button>
+        <button class="btn" onclick="showScreen('leaderboard-screen')">Leaderboard</button>
+        <button class="btn" onclick="playAsGuest()" style="display: block;">Play as Guest</button>
+        <button class="btn" id="login-btn" onclick="signInWithGoogle()" style="display: block;">Sign in with Google</button>
+        <button class="btn" id="profile-btn" onclick="showScreen('profile-screen')" style="display: none;">Profile</button>
+        <button class="btn" id="logout-btn" onclick="logout()" style="display: none;">Logout</button>
+      </div>
+
       <!-- Gaming Name Modal -->
       <div id="gaming-name-modal" class="modal">
         <div class="modal-content">
           <button class="close-btn" onclick="closeGamingNameModal()">✕</button>
           <h2 class="modal-title">Choose Your Alias</h2>
           <p class="modal-instructions">Min 3 chars. Lowercase letters, numbers, underscores only. Max 15 chars.</p>
-          <input
-            type="text"
-            id="gaming-name-input"
-            class="gaming-name-input"
-            placeholder="Enter gaming name..."
-            maxlength="20" /* Input allows more, validation enforces 15 */
-            required
-          />
+          <input type="text" id="gaming-name-input" class="gaming-name-input" placeholder="Enter gaming name..." maxlength="20" required />
           <button class="btn" onclick="submitGamingName()">Confirm</button>
         </div>
       </div>
@@ -19,7 +36,7 @@
       <!-- Profile Screen -->
       <div id="profile-screen" class="screen">
         <div class="profile-container">
-           <button class="close-btn" onclick="showScreen('home-screen')">✕</button> <!-- Moved inside -->
+           <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
           <div class="profile-header">
             <h2 class="title">Operator Profile</h2>
             <div class="gaming-name">
@@ -33,7 +50,6 @@
             <div class="stat-card"><div class="stat-value" id="games-played">0</div><div class="stat-label">Missions Run</div></div>
             <div class="stat-card"><div class="stat-value" id="leaderboard-rank">-</div><div class="stat-label">Current Rank</div></div>
           </div>
-           <!-- Back button added outside profile-container but inside screen -->
         </div>
          <button class="back-btn" onclick="showScreen('home-screen')">Return Home</button>
       </div>
@@ -49,21 +65,11 @@
               <div>Alias: <span id="player-name">-</span></div>
               <div class="score-info">(Points = Word Length)</div>
             </div>
-            <div id="game-status" class="game-status" style="display: none;">GAME OVER</div> <!-- Hide initially -->
-            <div class="lives" id="lives">
-                <!-- Lives (hearts/icons) added dynamically by JS -->
-            </div>
+            <div id="game-status" class="game-status" style="display: none;">GAME OVER</div>
+            <div class="lives" id="lives"></div>
           </div>
           <div class="input-container">
-            <input
-              type="text"
-              id="word-input"
-              placeholder="Type matching word..."
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="none"
-              spellcheck="false"
-            />
+            <input type="text" id="word-input" placeholder="Type matching word..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
           </div>
         </div>
       </div>
@@ -82,15 +88,16 @@
 
       <!-- Leaderboard Screen -->
        <div id="leaderboard-screen" class="screen">
-            <!-- Container for leaderboard content and its specific close button -->
             <div class="leaderboard" id="leaderboard">
                 <!-- Content injected by fetchLeaderboard() -->
                 Loading Leaderboard...
             </div>
-            <!-- Back button for the leaderboard screen -->
             <button id="leaderboard-back-btn" class="back-btn" onclick="showScreen('home-screen')" style="display: block;">Return Home</button>
        </div>
 
     </div> <!-- End .container -->
+
+    <!-- Link to External JavaScript (defer ensures DOM is ready) -->
+    <script src="script.js" defer></script>
   </body>
 </html>
