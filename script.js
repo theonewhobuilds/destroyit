@@ -139,7 +139,7 @@ async function checkAuth() {
     const loginBtn = document.getElementById("login-btn");
     const profileBtn = document.getElementById("profile-btn");
     const logoutBtn = document.getElementById("logout-btn");
-    const guestBtn = document.querySelector('button[onclick="playAsGuest()"]');
+    const guestBtn = document.getElementById("guest-btn"); // Use ID added in HTML
 
     if (session?.user) { // User is logged in
       if (currentUser?.id !== session.user.id) console.log("User session active:", session.user.email); // Log only if user changes
@@ -167,7 +167,7 @@ async function checkAuth() {
     document.getElementById("login-btn")?.style.setProperty("display", "block", "important");
     document.getElementById("profile-btn")?.style.setProperty("display", "none", "important");
     document.getElementById("logout-btn")?.style.setProperty("display", "none", "important");
-    document.querySelector('button[onclick="playAsGuest()"]')?.style.setProperty("display", "block", "important");
+    document.getElementById("guest-btn")?.style.setProperty("display", "block", "important"); // Use ID
     updateUIName(null);
     return false;
   }
@@ -316,12 +316,13 @@ function fetchLeaderboard() {
     // Ensure the container has the base structure
     container.innerHTML = `
         <div class="leaderboard-container">
-           <button class="close-btn" onclick="showScreen('home-screen')">✕</button>
+           <button class="close-btn" id="leaderboard-close-btn">✕</button> <!-- Add ID here -->
            <h2 class="leaderboard-title">LEADERBOARD</h2>
            <div class="leaderboard-header"><div>Rank</div><div>Player</div><div>Score</div><div>WPM</div></div>
            <div id="${contentDivId}" style="text-align:center; padding: 20px; color: #00f7ff;">Loading...</div>
         </div>`;
     // Back button is positioned relative to screen, managed by showScreen
+    document.getElementById('leaderboard-close-btn')?.addEventListener('click', () => showScreen('home-screen')); // Add listener for close button
 
     const content = document.getElementById(contentDivId);
     supabase.from("scores").select("score,wpm,username,profiles:profile_id(gaming_name)")
@@ -553,6 +554,26 @@ function restartGame() { console.log("Restarting game..."); showScreen('game-scr
  document.addEventListener("DOMContentLoaded", () => {
    if (!supabase) { console.error("DOM loaded but Supabase client is not initialized."); return; }
    console.log("DOM Loaded. Attaching listeners and checking auth.");
+
+    // --- Attach Event Listeners ---
+    console.log("Attaching event listeners...");
+    document.getElementById('play-btn')?.addEventListener('click', checkAuthAndPlay);
+    document.getElementById('leaderboard-btn')?.addEventListener('click', () => showScreen('leaderboard-screen'));
+    document.getElementById('guest-btn')?.addEventListener('click', playAsGuest); // Use ID
+    document.getElementById('login-btn')?.addEventListener('click', signInWithGoogle);
+    document.getElementById('profile-btn')?.addEventListener('click', () => showScreen('profile-screen'));
+    document.getElementById('logout-btn')?.addEventListener('click', logout);
+    document.getElementById('close-modal-btn')?.addEventListener('click', closeGamingNameModal); // Use ID
+    document.getElementById('submit-name-btn')?.addEventListener('click', submitGamingName); // Use ID
+    document.getElementById('profile-close-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
+    document.getElementById('change-name-btn')?.addEventListener('click', () => showGamingNameModal(true)); // Use ID
+    document.getElementById('profile-back-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
+    document.getElementById('game-close-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
+    document.getElementById('restart-btn')?.addEventListener('click', restartGame); // Use ID
+    document.getElementById('end-leaderboard-btn')?.addEventListener('click', () => showScreen('leaderboard-screen')); // Use ID
+    document.getElementById('end-home-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
+    document.getElementById('leaderboard-close-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
+    document.getElementById('leaderboard-back-btn')?.addEventListener('click', () => showScreen('home-screen')); // Use ID
 
    // --- Input Listener ---
    const wordInputEl = document.getElementById("word-input");
