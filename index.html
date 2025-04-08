@@ -165,7 +165,24 @@
 
       <!-- Leaderboard Screen -->
       <div id="leaderboard-screen" class="screen">
-        <div class="leaderboard" id="leaderboard">
+        <div class="leaderboard" id="leaderboard-container-dynamic">
+          <!-- Leaderboard Screen -->
+          <div id="leaderboard-screen" class="screen">
+            <!-- V V V V V V V V V V V V V V -->
+            <div class="leaderboard" id="leaderboard-container-dynamic">
+              <!-- ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ -->
+              <!-- Content injected by fetchLeaderboard() -->
+              Loading Leaderboard...
+            </div>
+            <button
+              id="leaderboard-back-btn"
+              class="back-btn"
+              onclick="showScreen('home-screen')"
+              style="display: block"
+            >
+              Return Home
+            </button>
+          </div>
           <!-- Content injected by fetchLeaderboard() -->
           Loading Leaderboard...
         </div>
