@@ -1,8 +1,3 @@
-// Hardcoded Supabase credentials
-const SUPABASE_URL = "https://ikbnuqabgdgikorhipnm.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrYm51cWFiZ2RnaWtvcmhpcG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMDU5NjEsImV4cCI6MjA1ODY4MTk2MX0.hK6qmYgWe62yn-cXfRgzr9cX-MWpyfxRUjL2jAIJjoU";
-
 // Global state variables
 let supabase;
 let currentUser = null;
@@ -21,21 +16,152 @@ let slowdownTimeout = null;
 let slowdownActive = false;
 let pauseTimeout = null;
 let pauseActive = false;
+let isInitialized = false;
 
-// Initialize Supabase Client - Placed early
-try {
-  if (!window.supabase?.createClient) {
-       throw new Error("Supabase library not loaded from CDN.");
+// Initialize Supabase Client using Edge Function
+async function initializeSupabase() {
+  try {
+    if (!window.supabase?.createClient) {
+      throw new Error("Supabase library not loaded from CDN.");
+    }
+
+    // Fetch configuration from Edge Function
+    const response = await fetch('https://ikbnuqabgdgikorhipnm.functions.supabase.co/auth-config', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch Supabase configuration');
+    }
+
+    const config = await response.json();
+    const { createClient } = window.supabase;
+    supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    console.log("Supabase client initialized successfully.");
+    
+    // Set up auth state change listener
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+      checkAuth();
+    });
+    
+    // Initial auth check
+    await checkAuth();
+    isInitialized = true;
+  } catch (error) {
+    console.error("FATAL: Supabase client failed to initialize:", error);
+    document.body.innerHTML = `<div style="color: red; padding: 20px; font-size: 1.5em; text-align: center;">Error initializing Supabase: ${error.message}. Check configuration.</div>`;
+    throw new Error("Stopping script execution due to Supabase init failure.");
   }
-  const { createClient } = window.supabase;
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log("Supabase client initialized successfully.");
-} catch (error) {
-   console.error("FATAL: Supabase client failed to initialize:", error);
-   document.body.innerHTML = `<div style="color: red; padding: 20px; font-size: 1.5em; text-align: center;">Error initializing Supabase: ${error.message}. Check credentials/CDN.</div>`;
-   // Stop further script execution if Supabase fails to load
-   throw new Error("Stopping script execution due to Supabase init failure.");
 }
+
+// Ensure functions don't run before initialization
+function ensureInitialized() {
+  if (!isInitialized) {
+    console.error("Supabase not initialized yet. Please wait...");
+    return false;
+  }
+  return true;
+}
+
+// Modified checkAuthAndPlay to handle async properly
+async function checkAuthAndPlay() {
+  if (!ensureInitialized()) return;
+  
+  console.log("checkAuthAndPlay - User:", currentUser?.email || "None");
+  if (!currentUser) {
+    if (confirm("Sign in with Google to save scores? Cancel to play as guest.")) {
+      await signInWithGoogle();
+    } else {
+      playAsGuest();
+    }
+  } else {
+    const name = await checkGamingName();
+    if (!name) {
+      showGamingNameModal(false);
+    } else {
+      showScreen("game-screen");
+    }
+  }
+}
+
+// Modified showScreen to handle async
+async function showScreen(screenId) {
+  if (!ensureInitialized() && screenId !== 'home-screen') return;
+  
+  console.log("Showing screen:", screenId);
+  document.querySelectorAll(".screen").forEach((screen) => {
+    screen.classList.remove("active");
+  });
+
+  // Stop game if navigating away from game screen
+  if (gameInterval && screenId !== "game-screen") {
+    console.log("Navigating away from game, stopping game.");
+    clearInterval(gameInterval);
+    gameInterval = null;
+    if (slowdownTimeout) clearTimeout(slowdownTimeout);
+    if (pauseTimeout) clearTimeout(pauseTimeout);
+    slowdownActive = false;
+    pauseActive = false;
+    slowdownTimeout = null;
+    pauseTimeout = null;
+    clearGameElements();
+  }
+
+  const targetScreen = document.getElementById(screenId);
+  if (targetScreen) {
+    targetScreen.classList.add("active");
+  } else {
+    console.error("Screen not found:", screenId, "Fallback to home.");
+    document.getElementById("home-screen")?.classList.add("active");
+    return;
+  }
+
+  // Screen-specific actions
+  try {
+    switch (screenId) {
+      case "profile-screen":
+        if (currentUser) {
+          await Promise.all([loadProfileStats(), checkGamingName()]);
+        } else {
+          console.warn("Profile screen shown but no user.");
+          showScreen("home-screen");
+        }
+        break;
+      case "leaderboard-screen":
+        await fetchLeaderboard();
+        document.getElementById('leaderboard-back-btn')?.style.setProperty("display", "block", "important");
+        break;
+      case "game-screen":
+        if ((isGuest && currentGamingName) || (currentUser && currentGamingName)) {
+          startGame();
+        } else {
+          console.log("Cannot start game, name not set.");
+          if (!isGuest) showGamingNameModal(false);
+          else playAsGuest();
+        }
+        break;
+      case "home-screen":
+        await checkAuth();
+        document.getElementById('leaderboard-back-btn')?.style.setProperty("display", "none", "important");
+        break;
+      default:
+        document.getElementById('leaderboard-back-btn')?.style.setProperty("display", "none", "important");
+    }
+  } catch (error) {
+    console.error(`Error in showScreen(${screenId}):`, error);
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  initializeSupabase().catch(error => {
+    console.error("Failed to initialize:", error);
+  });
+});
 
 // --- UI Navigation ---
 function showScreen(screenId) {
@@ -91,20 +217,6 @@ function showScreen(screenId) {
 }
 
 // --- Authentication & User Flow ---
-function checkAuthAndPlay() {
-  if (!supabase) return console.error("Supabase not initialized.");
-  console.log("checkAuthAndPlay - User:", currentUser?.email || "None");
-  if (!currentUser) {
-    if (confirm("Sign in with Google to save scores? Cancel to play as guest.")) { signInWithGoogle(); }
-    else { playAsGuest(); }
-  } else {
-    checkGamingName().then((name) => {
-      if (!name) showGamingNameModal(false); // Prompt if no name set
-      else showScreen("game-screen"); // Name exists, start game
-    }).catch(err => console.error("Error checking name in checkAuthAndPlay:", err));
-  }
-}
-
 function playAsGuest() {
   console.log("Playing as guest");
   isGuest = true; currentUser = null; currentGamingName = null;
@@ -362,10 +474,16 @@ function fetchLeaderboard() {
  }
 
 function updateScore() {
-    document.getElementById("score")?.textContent = score;
+  const scoreElement = document.getElementById("score");
+  if (scoreElement) {
+      scoreElement.textContent = score;
+  }
     const gameDurationMinutes = (Date.now() - gameStartTime) / 60000;
     const currentWpm = (gameDurationMinutes > 0.05 && wordsTyped > 0) ? Math.round(wordsTyped / gameDurationMinutes) : 0;
-    document.getElementById("wpm")?.textContent = currentWpm;
+    const wpmElement = document.getElementById("wpm");
+if (wpmElement) {
+    wpmElement.textContent = currentWpm;
+}
 }
 
 function updateLives() {
