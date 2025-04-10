@@ -260,13 +260,21 @@ function playAsGuest() {
   }
 }
 
+// --- MODIFIED signInWithGoogle ---
 function signInWithGoogle() {
   if (!ensureInitialized()) return;
-  console.log("Attempting Google Sign-In...");
+  console.log("Attempting Google Sign-In (forcing account selection)..."); // Updated log
   supabase.auth
     .signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href },
+      options: {
+        redirectTo: window.location.href,
+        // --- ADD THIS ---
+        queryParams: {
+          prompt: "select_account", // Tells Google to always show the account chooser
+        },
+        // --- END ADD ---
+      },
     })
     .then(({ data, error }) => {
       if (error) {
