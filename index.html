@@ -163,41 +163,41 @@
         </div>
       </div>
 
-      <!-- Leaderboard Screen -->
-      <div id="leaderboard-screen" class="screen">
-        <div class="leaderboard" id="leaderboard-container-dynamic">
-          <h1>Global Leaderboard</h1>
-          <!-- Leaderboard Screen -->
-          <div id="leaderboard-screen" class="screen">
-            <!-- V V V V V V V V V V V V V V -->
-            <div class="leaderboard" id="leaderboard-container-dynamic">
-              <!-- ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ -->
-              <!-- Content injected by fetchLeaderboard() -->
-              Loading Leaderboard...
+            <!-- Leaderboard Screen -->
+            <div id="leaderboard-screen" class="screen">
+              <div class="leaderboard-container"> <!-- Optional: Wrapper for centering/styling -->
+      
+                  <button class="close-btn" id="leaderboard-close-btn" onclick="showScreen('home-screen')" title="Close (Esc)">✕</button>
+                  <!-- Removed duplicate back button from here -->
+      
+                  <h2 class="leaderboard-title">LEADERBOARD</h2>
+      
+                  <!-- Header Row for Columns -->
+                  <div class="leaderboard-header">
+                      <div>Rank</div>
+                      <div>Player</div>
+                      <div>Score</div>
+                      <div>WPM</div>
+                  </div>
+      
+                  <!-- Dynamic Content Area - JS targets this ID -->
+                  <div class="leaderboard-list" id="leaderboard-container-dynamic">
+                      <!-- JS will inject rows here -->
+                      <div style="text-align:center; padding: 20px; color: #00f7ff;">Loading Leaderboard...</div>
+                  </div>
+      
+                   <!-- Back Button - Placed once at the bottom -->
+                  <button
+                    id="leaderboard-back-btn"
+                    class="back-btn"
+                    onclick="showScreen('home-screen')"
+                  >
+                    Return Home
+                  </button>
+      
+              </div> <!-- End .leaderboard-container -->
             </div>
-            <button
-              id="leaderboard-back-btn"
-              class="back-btn"
-              onclick="showScreen('home-screen')"
-              style="display: block"
-            >
-              Return Home
-            </button>
-          </div>
-          <!-- Content injected by fetchLeaderboard() -->
-          Loading Leaderboard...
-        </div>
-        <button
-          id="leaderboard-back-btn"
-          class="back-btn"
-          onclick="showScreen('home-screen')"
-          style="display: block"
-        >
-          Return Home
-        </button>
-      </div>
-    </div>
-    <!-- End .container -->
+            <!-- End #leaderboard-screen -->
 
     <!-- Scripts at the end of body in correct order -->
 
