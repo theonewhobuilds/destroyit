@@ -637,6 +637,34 @@ async function submitGamingName() {
     }
 
     console.log("Checking if name is taken...");
+
+    console.log(
+      "submitGamingName: Current user check before upsert:",
+      currentUser?.id
+    );
+    const {
+      data: { user: userCheck },
+      error: getUserError,
+    } = await supabase.auth.getUser();
+    if (getUserError || !userCheck) {
+      console.error(
+        "submitGamingName: Error fetching user or no user found right before upsert!",
+        getUserError
+      );
+      alert("Authentication error. Please try logging out and back in.");
+      return; // Stop if auth seems broken
+    }
+    console.log(
+      "submitGamingName: supabase.auth.getUser() confirms user ID:",
+      userCheck.id
+    );
+    if (userCheck.id !== currentUser?.id) {
+      console.warn(
+        "submitGamingName: Mismatch between currentUser state and auth.getUser()!"
+      );
+      // Consider updating currentUser or showing an error
+    }
+
     try {
       const { data: existing, error: checkErr } = await supabase
         .from("profiles")
