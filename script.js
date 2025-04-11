@@ -590,7 +590,97 @@ function updateUIName(name) {
   }
 }
 
-// --- submitGamingName Function (MODIFIED FOR INSERT TEST) ---
+// --- submitGamingName Function (Restored to UPSERT) ---
+async function submitGamingName() {
+  if (!ensureInitialized()) return;
+  console.log("submitGamingName triggered.");
+
+  const modal = document.getElementById("gaming-name-modal");
+  const input = document.getElementById, here is the `submitGamingName` function restored to use `.upsert()` (assuming your primary key column linking to `auth.users` in the `profiles` table is indeed named `id` as you last confirmed).
+
+**Replace** the entire existing `submitGamingName` function in your `script.js` file with this code block:
+
+```javascript("gaming-name-input");
+  const errorMsgEl = document.getElementById("gaming-name-error"); // Assuming you have this element
+
+  // Clear previous errors
+  if (errorMsgEl) errorMsgEl.textContent = "";
+
+  if (!modal || !input) {
+    console.error("submitGamingName: Modal or input element not found.");
+    return;
+  }
+
+  // Validate Name
+  const validation = validateGamingName(input.value);
+  if (!validation.valid) {
+    console.warn("submitGamingName: Validation failed:", validation.
+// --- submitGamingName Function (Restored to use UPSERT) ---
+async function submitGamingName() {
+  if (!ensureInitialized()) return;
+  console.log("submitGamingName triggered.");
+
+  const modal = document.getElementById("gaming-name-modal");
+  const input = document.getElementById("gaming-name-input");
+  // Make sure you have an element with this ID in your modal HTML to show errors
+  const errorMsgEl = document.getElementById("gaming-name-error");
+
+  // Clear previous errors
+  if (errorMsgEl) errorMsgEl.textContent = "";
+
+  if (!modal || !input) {
+    console.error("submitGamingName: Modal or input element not found.");
+    return;
+  }
+
+  // Validate Name
+  const validation = validateGamingName(input.value);
+message);
+    if (errorMsgEl) errorMsgEl.textContent = validation.message;
+    else alert(validation.message);
+    input.focus();
+    return;
+  }
+
+  const gamingName = validation.sanitized;
+  const isUpdate = modal.dataset.isProfileUpdate === "true";
+  console.log(
+    `submitGamingName: Validated name: ${gamingName}, isUpdate: ${isUpdate}`
+  );
+
+  // --- Logged-in User Flow ---
+  if (currentUser) {
+    console.log("Submitting as logged-in user.");
+
+    // --- Pre-checks ---
+    if (isUpdate && gamingName === currentGamingName) {
+        console.log("Name hasn't changed.");
+        if(errorMsgEl) errorMsgEl.textContent = "Name has not changed.";
+        else alert("Name has not changed.");
+        return;
+    }
+    if (isUpdate && !canChangeGamingName()) {
+      console.warn("Update blocked: Daily limit reached.");
+      if(errorMsgEl) errorMsgEl.textContent = "Daily name change limit reached.";
+      else alert("Daily name change limit reached.");
+      return;
+    }
+
+    // --- Confirm Auth State ---
+    console.log(
+      "submitGamingName: Current user check before upsert:",
+      currentUser?.id
+    );
+    const {
+      data: { user: userCheck },
+      error: getUserError,
+    } = await supabase.auth.getUser();
+Okay, here is the `submitGamingName` function with the `upsert` call restored (assuming your primary key column linked to auth users is indeed named `id`).
+
+**Replace** the entire `submitGamingName` function in your `script.js` with this code:
+
+```javascript
+// --- submitGamingName Function (Restored Upsert) ---
 async function submitGamingName() {
   if (!ensureInitialized()) return;
   console.log("submitGamingName triggered.");
@@ -607,7 +697,100 @@ async function submitGamingName() {
     return;
   }
 
-  // Validate Name
+  // Validate Name  if (!validation.valid) {
+    console.warn("submitGamingName: Validation failed:", validation.message);
+    if (errorMsgEl) errorMsgEl.textContent = validation.message;
+    else alert(validation.message); // Fallback alert
+    input.focus();
+    return;
+  }
+
+  const gamingName = validation.sanitized;
+  const isUpdate = modal.dataset.isProfileUpdate === "true"; // Check if it was an update attempt
+  console.log(
+    `submitGamingName: Validated name: ${gamingName}, isUpdate: ${isUpdate}`
+  );
+
+  // --- Logged-in User Flow ---
+  if (currentUser) {
+    console.log("Submitting as logged-in user.");
+
+    // --- Pre-checks ---
+    if (isUpdate && gamingName === currentGamingName) {
+      console.log("Name hasn't changed.");
+      if (errorMsgEl) errorMsgEl.textContent = "Name has not changed.";
+      else alert("Name has not changed.");
+      return;
+    }
+    if (isUpdate && !canChangeGamingName()) {
+      console.warn("Update blocked: Daily limit reached.");
+      if (errorMsgEl) errorMsgEl.textContent = "Daily name change limit reached.";
+      else alert("Daily name change limit reached.");
+      return;
+    }
+
+    // --- Confirm Auth State ---
+    console.log(
+      "submitGamingName: Current user check before upsert:",
+      currentUser?.id
+    );
+    const {
+      data: { user: userCheck },
+      error: getUserError,
+    } = await supabase.auth.getUser();
+    if (getUserError || !userCheck) {
+      console.error(
+        "submitGamingName: Error fetching user or no user found right before upsert!",
+        getUserError
+      );
+      alert("Authentication error. Please try logging out and back in.");
+      return;
+    }
+    console.log(
+      "submitGamingName: supabase.auth.getUser() confirms user ID:",
+      userCheck.id
+    );
+    if (userCheck.id !== currentUser?.id) {
+      console.warn(
+        "submitGamingName: Mismatch between currentUser state and auth.getUser()!"
+      );
+      // Consider updating local state if needed: currentUser = userCheck;
+    }
+    // Use the confirmed ID for the database operation
+    const userIdToUse = userCheck.id;
+
+    // --- Database Operation ---
+    try {
+      // --- Check if name is taken (    if (getUserError || !userCheck) {
+      console.error(
+        "submitGamingName: Error fetching user or no user found right before upsert!",
+        getUserError
+      );
+      alert("Authentication error. Please try logging out and back in.");
+      return; // Stop if auth seems broken
+    }
+    console.log(
+      "submitGamingName: supabase.auth.getUser() confirms user ID:",
+      userCheck.id
+    );
+    if (userCheck.id !== currentUser?.id) {
+      console.warn(
+        "submitGamingName: Mismatch between currentUser state and auth.getUser()!"
+      );
+       // Update local state for consistency if needed
+       // currentUser = userCheck;
+    }
+    // Use the confirmed ID from getUser for safety
+    const userIdToUse = userCheck.id;
+
+    // --- Database Operation ---
+    try {
+      // --- Check if name is taken (still needed) ---
+      console.log("Checking if name is taken...");
+      const { data: existing, error: checkErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("gaming_name", gamingName) // Case
   const validation = validateGamingName(input.value);
   if (!validation.valid) {
     console.warn("submitGamingName: Validation failed:", validation.message);
@@ -618,9 +801,9 @@ async function submitGamingName() {
   }
 
   const gamingName = validation.sanitized;
-  const isUpdate = modal.dataset.isProfileUpdate === "true"; // Check if it was an update attempt
+  const isUpdate = modal.dataset.isProfileUpdate === "true";
   console.log(
-    `submitGamingName: Validated name: ${gamingName}, Original action was update: ${isUpdate}`
+    `submitGamingName: Validated name: ${gamingName}, isUpdate: ${isUpdate}`
   );
 
   // --- Logged-in User Flow ---
@@ -628,15 +811,14 @@ async function submitGamingName() {
     console.log("Submitting as logged-in user.");
 
     // --- Pre-checks ---
-    // If this was *intended* as an update, check change limit
     if (isUpdate && gamingName === currentGamingName) {
-        console.log("Name hasn't changed (during intended update).");
+        console.log("Name hasn't changed.");
         if(errorMsgEl) errorMsgEl.textContent = "Name has not changed.";
         else alert("Name has not changed.");
         return;
     }
     if (isUpdate && !canChangeGamingName()) {
-      console.warn("Update blocked: Daily limit reached (during intended update).");
+      console.warn("Update blocked: Daily limit reached.");
       if(errorMsgEl) errorMsgEl.textContent = "Daily name change limit reached.";
       else alert("Daily name change limit reached.");
       return;
@@ -696,50 +878,98 @@ async function submitGamingName() {
         return;
       }
 
-      // --- TEMPORARY TEST - INSERT ONLY ---
-      console.log(`TEMPORARY TEST: Inserting profile for ${userIdToUse} with name ${gamingName}`);
-      const { data: insertData, error: insertErr } = await supabase
-        .from("profiles")
-        .insert({
-          id: userIdToUse, // Use the confirmed user ID
-          gaming_name: gamingName,
-          // If your DB table `profiles` has a default value for `updated_at` (like `now()`),
-          // you might not need to specify it here. If not, uncomment the line below.
-          updated_at: new Date().toISOString(),
-        })
-        .select("gaming_name") // Select the name back
-        .single(); // Expect single row back
+      // --- UPSERT Operation (Restored) ---
+      console.log(`Upserting profile for ${userIdToUse} with name ${gamingName}`);
+      const { data: upsertData, error: upsertErr } = await supabase
+          .from("profiles")
+          .upsert(
+              {
+                  id: userIdToUse, // Primary key column name is 'id'
+                  gaming_name: gamingName,
+                  updated_at: new Date().toISOString(),
+              },
+              {
+                  onConflict: "id", // Conflict column name is 'id'
+              }
+          )
+          .select("gaming_name") // Select the name back
+          .single(); // Expect single row back
+      // --- END UPSERT ---
 
-      if (insertErr) {
-        // Log the specific insert error
-        console.error("Error inserting profile:", insertErr);
+      if (upsertErr) {
+        // Log the specific upsert error
+        console.error("Error upserting profile:", upsertErr);
         // Re-throw a user-friendly error that the catch block will handle
-        throw new Error(`Failed to save name (INSERT): ${insertErr.message}`);
+        throw new Error(`Failed to save name: ${upsertErr.message}`);
       }
-      console.log("TEMPORARY TEST: Insert successful:", insertData);
-      // --- END TEMPORARY TEST ---
+      console.log("Profile upsert successful:", upsertData);
 
 
-      // --- Success Logic (using insertData) ---
+      // --- Success Logic (using upsertData) ---
+      const previousstill needed) ---
+      console.log("Checking if name is taken...");
+      const { data: existing, error: checkErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("gaming_name", gamingName) // Case sensitivity depends on DB collation
+        .neq("id", userIdToUse) // Exclude self
+        .limit(1);
+
+      if (checkErr) {
+        console.error("Error checking for existing name:", checkErr);
+        throw new Error(`Database error checking name: ${checkErr.message}`);
+      }
+      if (existing?.length > 0) {
+        console.warn("Name already taken.");
+        if (errorMsgEl) errorMsgEl.textContent = "Gaming name already taken.";
+        else alert("Gaming name already taken.");
+        input.focus();
+        return;
+      }
+
+      // --- Use UPSERT ---
+      console.log(`Upserting profile for ${userIdToUse} with name ${gamingName}`);
+      const { data: upsertData, error: upsertErr } = await supabase
+            .from("profiles")
+            .upsert(
+                {
+                    id: userIdToUse, // Use the correct primary key column name ('id')
+                    gaming_name: gamingName,
+                    updated_at: new Date().toISOString(), // Include updated_at for upsert
+                },
+                {
+                    onConflict: "id", // Specify the correct conflict column name ('id')
+                }
+            )
+            .select("gaming_name") // Select the name back to confirm
+            .single(); // Expect single row back
+      // --- End UPSERT ---
+
+      if (upsertErr) {
+        console.error("Error upserting profile:", upsertErr);
+        // Check for specific error types if needed, otherwise throw generic
+        throw new Error(`Failed to save name: ${upsertErr.message}`);
+      }
+
+      // --- Success Logic ---
+      console.log("Profile upsert successful:", upsertData);
       const previousName = currentGamingName; // Store previous name
-      currentGamingName = insertData.gaming_name; // Update global state
+      currentGamingName = upsertData.gaming_name; // Update global state
       updateUIName(currentGamingName); // Update UI
 
       // Increment counter only if it was intended as an update and name actually changed
       if (isUpdate && currentGamingName !== previousName) {
-        incrementNameChangeCounter();
+        incrementNameChangeCounter(); // Handle count and success message inside this function
       } else if (isUpdate) {
-         // If intended update but name was same (and somehow passed initial check)
-         // or if it was initial setup mistaken as update?
-         // Let's just provide a generic success for now if it gets here on update path
-         alert("Gaming name saved successfully.");
+        // If update attempt but name was same (or initial setup mistaken for update)
+        alert("Gaming name saved successfully."); // Generic success message
       }
-      // No alert needed for initial setup, just proceed
+      // No alert needed for initial setup success
 
       modal.classList.remove("active"); // Close modal
       input.value = ""; // Clear input
 
-      if (!isUpdate) { // If this was the initial setup (not triggered by 'Change Alias')
+      if (!isUpdate) { // If this was the initial setup
         console.log("Initial name set, proceeding to game screen.");
         showScreen("game-screen");
       } else { // If this was triggered by 'Change Alias' button
@@ -752,12 +982,12 @@ async function submitGamingName() {
       console.error("submitGamingName (logged-in DB interaction) error:", error);
       if (errorMsgEl) errorMsgEl.textContent = error.message || "Failed to save name.";
       else alert(error.message || "Failed to save name. Check console.");
-      // Keep modal open for user to see error/retry?
     }
 
   // --- Guest Flow (Unchanged) ---
   } else if (isGuest) {
     console.log("Submitting as guest.");
+    // Simple local assignment for guest
     currentGamingName = gamingName;
     updateUIName(currentGamingName);
     console.log("Guest name set locally:", currentGamingName);
@@ -772,7 +1002,7 @@ async function submitGamingName() {
     alert("Cannot submit name. Please log in or choose 'Play as Guest'.");
   }
 }
-// --- END OF MODIFIED submitGamingName ---
+// --- END OF submitGamingName ---
 
 // --- Profile & Leaderboard Data ---
 async function loadProfileStats() {
